@@ -1,0 +1,7 @@
+/Debug/
+/.settings/
+/Release/
+.cproject
+.project
+/ext_include/
+/cmakebuild/

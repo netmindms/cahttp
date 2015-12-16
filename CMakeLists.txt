@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 2.6)
+project(cahttp)
+set(CAHTTP_VER_MAJOR 0)
+set(CAHTTP_VER_MINOR 1)
+set(CAHTTP_VER_PATCH 1)
+set(CAHTTP_VER ${CAHTTP_VER_MAJOR}.${CAHTTP_VER_MINOR}.${CAHTTP_VER_PATCH} )
+# check compiler 
+if( NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  message(FATAL_ERROR "### Error: not supported compiler")
+endif()
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.7")
+	  message(FATAL_ERROR "### Error: compiler verson is too low")
+	endif()
+endif()	
+
+if(NOT CMAKE_BUILD_TYPE )
+	set(CMAKE_BUILD_TYPE Release)
+endif()	
+#set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-std=c++0x -O3 -Wall -fmessage-length=0 " )
+#set(CMAKE_CXX_FLAGS "-std=c++0x -pthread " )
+set(CMAKE_CXX_FLAGS "-std=c++0x -pthread -DMYPREP_BASE_FILE_NAME=\\\"$(<F)\\\" " )
+file(GLOB ALLSRCS "src/*.cpp" "src/*.cc" )
+
+add_library(cahttp SHARED ${ALLSRCS})
+target_link_libraries(cahttp "pthread" "ednio")
+set_target_properties(cahttp PROPERTIES SOVERSION 0 VERSION ${CAHTTP_VER})
+install(TARGETS cahttp DESTINATION lib ) 
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/src/ DESTINATION include/cahttp
+        FILES_MATCHING PATTERN "*.h")
