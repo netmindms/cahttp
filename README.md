@@ -20,7 +20,8 @@ Installation
     ```
     sudo make install cmake
     ```
-   - Build & Install
+  * Build & Install
+  
    ```
    $ cmake src_dir
    $ make
