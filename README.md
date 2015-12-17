@@ -1,4 +1,5 @@
-# cahttp
+cahttp
+======
 C++ Asynchronous HTTP library
 
 Introduction
@@ -14,7 +15,7 @@ Installation
   * Install prerequisites.
    - GCC 4.7 or later required.( GCC4.9 recommended.)
    - Install ednio library: 
-     refer to [https://github.com/netmindms/ednio](http://)
+     refer to [ednio github site](http://github.com/netmindms/ednio)
    - Install cmake: 
     ```
     sudo make install cmake
