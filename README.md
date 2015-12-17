@@ -26,8 +26,10 @@ Installation
    $ make
    $ sudo make install
    ```
-  * Code Snippet
-  client API
+
+Code Snippet
+------------
+  - client API
   ```
   ...
   CaHttpReq req;
@@ -41,8 +43,7 @@ Installation
 	});
   ...
   ```
-  
-  Server API
+  - Server API
   ```
   class IndexUrlCtrl : public CaHttpUrlCtrl {
     void OnHttpReqMsg() override {
