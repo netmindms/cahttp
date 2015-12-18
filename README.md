@@ -20,7 +20,8 @@ Installation
     ```
     sudo make install cmake
     ```
-   - Build & Install
+  * Build & Install
+  
    ```
    $ cmake src_dir
    $ make
@@ -29,7 +30,9 @@ Installation
 
 Code Snippet
 ------------
-  - client API
+ 
+* client API
+
   ```
   ...
   CaHttpReq req;
@@ -40,10 +43,12 @@ Code Snippet
       std::string resp_data = req.getRespData(); // response body data
       ...
     }
-	});
+  });
   ...
   ```
-  - Server API
+  
+* Server API
+  
   ```
   class IndexUrlCtrl : public CaHttpUrlCtrl {
     void OnHttpReqMsg() override {
