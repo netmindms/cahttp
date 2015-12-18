@@ -12,7 +12,6 @@
 #include "ServCnn.h"
 #include "http_parser.h"
 #include "HttpStringReadStream.h"
-//#include "RingBufReadStream.h"
 
 namespace cahttp {
 
@@ -69,6 +68,7 @@ CaHttpUrlCtrl::CaHttpUrlCtrl() {
 	mHandle = 0;
 	mDataReadCnt = 0;
 	mReqDataStrm = nullptr;
+	mDataStrm = nullptr;
 	ald("url ctrl const, ptr=%x", (long)this);
 }
 
@@ -106,7 +106,8 @@ void CaHttpUrlCtrl::response(int status, string&& data, string&& content_type) {
 	mRespContentLen = data.size();
 	auto &strm = *(new HttpStringReadStream);
 	strm.setString(move(data));
-	mDataStrm.reset(&strm);
+	mpuSelfDataStrm.reset(&strm);
+	mDataStrm = &strm;
 	response(status);
 
 }
@@ -116,9 +117,9 @@ void CaHttpUrlCtrl::response(int status, const std::string& data, const std::str
 }
 
 
-void CaHttpUrlCtrl::response(int status, HdrList && hdrs, upHttpBaseReadStream datastrm) {
+void CaHttpUrlCtrl::response(int status, HdrList && hdrs, HttpBaseReadStream *datastrm) {
 	mRespMsg.setHdrList(move(hdrs));
-	mDataStrm = move(datastrm);
+	mDataStrm = datastrm;
 	response(status);
 }
 
@@ -361,11 +362,12 @@ void CaHttpUrlCtrl::setRespContent(const char* ptr, int64_t data_len, string&& c
 	mWriteCnt = 0;
 	auto &strm = *new HttpStringReadStream;
 	strm.setString(string(ptr, (size_t)data_len));
-	mDataStrm.reset(&strm);
+	mpuSelfDataStrm.reset(&strm);
+	mDataStrm = &strm;
 }
 
-void CaHttpUrlCtrl::setRespContent(upHttpBaseReadStream strm, int64_t len) {
-	mDataStrm = move(strm);
+void CaHttpUrlCtrl::setRespContent(HttpBaseReadStream *strm, int64_t len) {
+	mDataStrm = strm;
 	mRespContentLen = len;
 	if(len<0) {
 		SET_TRANSFER_ENC();

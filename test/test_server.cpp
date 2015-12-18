@@ -375,6 +375,7 @@ class AutoLongSendUrl: public CaHttpUrlCtrl {
 };
 
 class AutoFileUrl: public CaHttpUrlCtrl {
+	HttpFileReadStream filestrm;
 	void OnHttpReqMsgHdr() override {
 
 	}
@@ -382,10 +383,10 @@ class AutoFileUrl: public CaHttpUrlCtrl {
 	void OnHttpReqMsg() override {
 		struct utsname un;
 		uname(&un);
-		upHttpFileReadStream strm(new HttpFileReadStream);
+//		upHttpFileReadStream strm(new HttpFileReadStream);
 		string fn = string("/boot/initrd.img-") + un.release;
-		strm->open(fn.data());
-		setRespContent(move(strm), strm->remain());
+		filestrm.open(fn.data());
+		setRespContent(&filestrm, filestrm.remain());
 		addRespHdr("Content-Type", "application/octet-stream");
 		response(200);
 	}
@@ -395,10 +396,11 @@ class AutoFileUrl: public CaHttpUrlCtrl {
 };
 
 class AutoTransEncFileUrl : public CaHttpUrlCtrl {
+	HttpFileReadStream filestrm;
 	void OnHttpReqMsg() override {
-		upHttpFileReadStream strm(new HttpFileReadStream);
-		strm->open(DOWNLOAD_FILE_NAME.data());
-		setRespContent(move(strm), -1);
+//		upHttpFileReadStream strm(new HttpFileReadStream);
+		filestrm.open(DOWNLOAD_FILE_NAME.data());
+		setRespContent(&filestrm, -1);
 		response(200);
 	}
 };

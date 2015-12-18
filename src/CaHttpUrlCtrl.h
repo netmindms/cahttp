@@ -17,7 +17,7 @@
 #include "CaHttpSvrReq.h"
 #include "CaSimpleHeaderEnc.h"
 #include "HttpStringReadStream.h"
-//#include "RingBufReadStream.h"
+
 namespace cahttp {
 class ServCnn;
 class CaHttpUrlCtrl {
@@ -37,7 +37,7 @@ public:
 	void response(int status);
 	void response(int status, const std::string& data, const std::string& content_type="plain/text");
 	void response(int status, std::string&& data, std::string&& content_type);
-	void response(int status, vector<hdrpair> &&hdrlist, upHttpBaseReadStream strm);
+	void response(int status, vector<hdrpair> &&hdrlist, HttpBaseReadStream *strm);
 	const vector<std::string> &getUrlMatchStr();
 	ServCnn& getConnection() { return *mCnn;};
 	int getRespCode();
@@ -46,8 +46,8 @@ public:
 	int sendString(const string& str);
 	void addRespHdr(const string &name, const string &val);
 	void setRespContent(const char* ptr, int64_t data_len, std::string&& ctype, bool tec=false);
-	void setRespContent(const string &str, std::string&& ctype, bool tec=false);
-	void setRespContent(upHttpBaseReadStream strm , int64_t len);
+	void setRespContent(const std::string &str, std::string&& ctype, bool tec=false);
+	void setRespContent(HttpBaseReadStream *strm , int64_t len);
 	const string& getReqHdr(const char* name);
 	uint32_t getHandle();
 	uint64_t getContentLen();
@@ -62,7 +62,8 @@ private:
 	HttpStringReadStream mHdrStrm;
 	HttpBaseWriteStream *mReqDataStrm;
 	unique_ptr<HttpBaseWriteStream> mDefStrm;
-	unique_ptr<HttpBaseReadStream> mDataStrm;
+	unique_ptr<HttpBaseReadStream> mpuSelfDataStrm;
+	HttpBaseReadStream *mDataStrm;
 	vector<std::string> mUrlMatchRes;
 	int64_t mWriteCnt, mDataReadCnt;
 	string mRespData;

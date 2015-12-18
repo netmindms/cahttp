@@ -10,94 +10,125 @@
 #include "app.h"
 #include <ednio/EdNio.h>
 #include <cahttp/CaHttpServer.h>
+#include <climits>
+#include <cahttp/HttpFileReadStream.h>
+#include "FileUtil.h"
+
 using namespace edft;
 using namespace std;
 using namespace cahttp;
 
-class AutoSendCtrl: public CaHttpUrlCtrl {
-public:
-	AutoSendCtrl(){
-		mdata = "12345\n";
-		mSendCnt = 0;
-	};
-	virtual ~AutoSendCtrl(){};
-	virtual void OnHttpReqMsgHdr() override {
-
-	};
-
-//	virtual void OnHttpReqData(CaHttpSvrReq &req);
-//	virtual void OnHttpReqDataEnd(CaHttpSvrReq &req);
-	virtual void OnHttpReqMsg() override {
-		ali("On req msg, task=%lx", (u64)EdTask::getCurrentTask());
-		addRespHdr("X-Id", "asdfasdfasdf");
-		addRespHdr(CAHS::CTYPE, "plain/text");
-//		response(200, "OK\n");
-		HttpStringReadStream &strm = *new HttpStringReadStream;
-		strm.setString("1233456565656");
-//		setRespContent(nullptr, -1);
-		setRespContent(upHttpStringReadStream(&strm), -1);
-
-		response(200);
-	};
-
-	virtual void OnHttpSendBufReady() override {
-		ali("buf ready...");
-		mTimer.setOnListener([this](EdTimer &timer){
-			sendData(mdata.data(), mdata.size());
-			if(mSendCnt++ >= 10) {
-				timer.kill();
-				sendData(nullptr, 0);
-			}
-		});
-		mTimer.set(1000);
+struct App {
+	App() {
+		port = 9000;
+		rootDir = "/usr/lib";
 	}
-//	virtual void OnHttpSendBufReady(CaHttpSvrReq &req);
-	virtual void OnHttpEnd() override {
-		mTimer.kill();
-		ali("on server http end");
-	};
-private:
-	string mdata;
-	EdTimer mTimer;
-	int mSendCnt;
+	int port;
+	string rootDir;
 };
 
-class ManualSendCtrl: public CaHttpUrlCtrl {
-	void OnHttpReqMsg() override {
+App gApp;
 
+class ListFileUrl: public CaHttpUrlCtrl {
+	void OnHttpReqMsg() override {
+		string resp;
+		resp= "<html><head></head><body>";
+		string ls;
+		auto fl = FileUtil::getFileList(gApp.rootDir.data(), FileUtil::DIR_ONLY);
+		ls = "<ul style='list-style-type:none'>";
+		for(auto &f: fl) {
+			ls += "<li style='color:blue'><b><u><a href=/file/dir/" + f+ ">"+f+"</a></u></b></li>\n";
+		}
+		fl = FileUtil::getFileList(gApp.rootDir.data(), FileUtil::FILE_ONLY);
+		for(auto &f: fl) {
+			ls += "<li>" + f+ "</li>\n";
+		}
+		ls += "</ul>\n";
+		resp += ls;
+		resp += "</body></html>\n";
+
+		response(200, resp, CAS::CT_TEXT_HTML);
+	}
+};
+
+
+class DirUrl: public CaHttpUrlCtrl {
+	void OnHttpReqMsg() override {
+		auto mph = getUrlMatchStr();
+		string dirpath = gApp.rootDir;
+		for(auto &ps: mph) {
+			dirpath += "/" + ps;
+		}
+
+		string resp;
+		resp= "<html><head></head><body>";
+		string ls;
+		auto fl = FileUtil::getFileList(dirpath.data(), FileUtil::DIR_ONLY);
+		ls = "<ul style='list-style-type:none'>";
+		for(auto &f: fl) {
+			ls += "<li style='color:blue'><b><u><a href=/file/dir/" + f+ ">"+f+"</a></u></b></li>\n";
+		}
+		fl = FileUtil::getFileList(dirpath.data(), FileUtil::FILE_ONLY);
+		for(auto &f: fl) {
+			ls += "<li><a href=/file/download/" +f+ ">" + f+  "</a></li>\n";
+		}
+		ls += "</ul>\n";
+		resp += ls;
+		resp += "</body></html>\n";
+
+		response(200, resp, CAS::CT_TEXT_HTML);
+	}
+};
+
+class DownloadUrl: public CaHttpUrlCtrl {
+	HttpFileReadStream mFileStrm;
+	void OnHttpReqMsg() override {
+		auto &vs = getUrlMatchStr();
+		if(vs.empty()) {
+			response(404, "File Not Found");
+			return;
+		}
+		string path;
+		path = gApp.rootDir+"/"+vs[0];
+		if(FileUtil::isExist(path)) {
+			mFileStrm.open(path.data());
+			addRespHdr(CAS::HS_CONTENT_TYPE, CAS::CT_APP_OCTET);
+			setRespContent(&mFileStrm, (int64_t)mFileStrm.remain());
+			response(200);
+		} else {
+			response(404, "File Not Found");
+			return;
+		}
+
+		string downpath = gApp.rootDir+"/"+ path;
+		mFileStrm.open(downpath.data());
 	}
 
 	void OnHttpEnd() override {
-
+		mFileStrm.close();
 	}
 };
-
 class MainTask: public EdTask {
-	CaHttpServer mSingleTaskServer;
+	CaHttpServer mServer;
 	int OnEventProc(EdMsg &msg) {
 		if (msg.msgid == EDM_INIT) {
-			ali("start main task=%lx", (u64)EdTask::getCurrentTask());
-			mSingleTaskServer.setUrl<AutoSendCtrl>("/auto_send");
-//			mServer.setUrlRegEx<BasicCtrl>("/v1/([0-9]*)/([a-zA-Z0-9]*)");
-			mSingleTaskServer.start(1);
-			ali("start http server...");
+			mServer.config("port", to_string(gApp.port).data());
+			mServer.setUrl<ListFileUrl>(HTTP_GET, "/file/list");
+			mServer.setUrlRegEx<DirUrl>(HTTP_GET, "/file/dir/(.*)");
+			mServer.setUrlRegEx<DownloadUrl>(HTTP_GET, "/file/download/(.*)");
+			mServer.start(0);
 		}
 		else if (msg.msgid == EDM_CLOSE) {
-			mSingleTaskServer.close();
+			mServer.close();
 		}
 		return 0;
 	}
 };
 
-#include <climits>
-#include <ednio/EdRingQue.h>
-#include <cahttp/RingBufReadStream.h>
+
 int main(int argc, char* argv[]) {
-//	SetLogLevel(LOG_DEBUG);
 	EdNioInit();
 	MainTask task;
 	task.runMain();
-//	getchar();
-	task.terminate();
 	return 0;
 }

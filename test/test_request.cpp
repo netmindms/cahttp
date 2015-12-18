@@ -123,12 +123,13 @@ static void do_cahttp_server() {
 	};
 
 	class FileDownloadUrl: public CaHttpUrlCtrl {
+		HttpFileReadStream filestrm;
 		void OnHttpReqMsg() override {
 			ald("file download request, ...");
-			HttpFileReadStream* pstrm = new HttpFileReadStream;
-			auto fd = pstrm->open(TEST_FILE_NAME.data());
+//			HttpFileReadStream* pstrm = new HttpFileReadStream;
+			auto fd = filestrm.open(TEST_FILE_NAME.data());
 			assert(fd>0);
-			setRespContent(upHttpBaseReadStream(pstrm), EdFile::getSize(TEST_FILE_NAME.data()));
+			setRespContent(&filestrm, EdFile::getSize(TEST_FILE_NAME.data()));
 			response(200);
 		}
 		void OnHttpEnd() override {
