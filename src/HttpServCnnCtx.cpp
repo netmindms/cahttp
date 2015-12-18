@@ -5,7 +5,7 @@
  *      Author: root
  */
 
-#define LOG_LEVEL LOG_INFO
+#define LOG_LEVEL LOG_WARN
 #include "flog.h"
 #include "HttpServCnnCtx.h"
 #include "CaHttpServer.h"
@@ -70,7 +70,7 @@ CaHttpUrlCtrl* HttpServCnnCtx::findAndAlloc(http_method method, const string& ur
 		}
 	}
 	smatch mresult;
-	auto alloc = mpSvr->matchRegExUrl(mresult, urlstr);
+	auto alloc = mpSvr->matchRegExUrl(method, mresult, urlstr);
 	if (alloc) {
 		auto &ctrl = *(alloc());
 		auto h = mHandleFac.newHandle();

@@ -501,6 +501,17 @@ class UploadFileUrl : public CaHttpUrlCtrl {
 	}
 };
 
+class RegExUrl: public CaHttpUrlCtrl {
+	void OnHttpReqMsg() override {
+		auto ps = getUrlMatchStr();
+		string resp;
+		for(auto &s: ps) {
+			resp += s + ",";
+		}
+		response(200, resp, CAS::CT_TEXT_PLAIN);
+	}
+};
+
 class ServerMain: public EdTask {
 public:
 	ServerMain() {
@@ -530,7 +541,7 @@ public:
 			mServer.setUrl<ReqDefStrmUrl>(HTTP_POST, "/req-def-strm");
 			mServer.setUrl<UploadFileUrl>(HTTP_POST, "/upload-file");
 			mServer.setUrl<ServerExitUrl>(HTTP_GET, "/server-exit");
-
+			mServer.setUrlRegEx<RegExUrl>(HTTP_GET, "/regex/([a-z]*)/([0-9]*)");
 			mServer.start(0);
 		} else if (msg.msgid == EDM_CLOSE) {
 			mServer.close();
@@ -717,6 +728,22 @@ TEST(server, reqdata) {
 	FDCHK_E(0);
 
 }
+
+#ifdef CAHTTP_REGEX_URLPATTERN
+TEST(server, regex) {
+	ServerMain mainTask;
+	mainTask.run();
+
+	string resp;
+
+	resp = execCurl("GET", "/regex/ABC/012");
+	ASSERT_EQ(resp.empty(), true);
+
+	resp = execCurl("GET", "/regex/abc/012");
+	ASSERT_EQ(resp=="abc,012,", true);
+	mainTask.terminate();
+}
+#endif
 
 void serverlive() {
 	ServerMain mainTask;

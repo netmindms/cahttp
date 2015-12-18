@@ -5,7 +5,7 @@
  *      Author: netmind
  */
 
-#define LOG_LEVEL LOG_INFO
+#define LOG_LEVEL LOG_WARN
 
 #include <assert.h>
 #include "flog.h"
@@ -112,9 +112,13 @@ const UrlMap* CaHttpServer::getUrlMap(http_method method) {
 	return pmap;
 }
 
-UrlCtrlAlloc CaHttpServer::matchRegExUrl(smatch& result, const string& s) {
+UrlCtrlAlloc CaHttpServer::matchRegExUrl(http_method method, smatch& result, const string& s) {
+	auto umap = findMethodRegExMap(method);
+	if(!umap) {
+		return nullptr;
+	}
 	bool ret;
-	for(auto &rm : mUrlRegExMap) {
+	for(auto &rm : (*umap)) {
 		ret = regex_match(s, result, rm.first);
 		if(ret) {
 			return rm.second;
@@ -166,4 +170,16 @@ void CaHttpServer::notifyCloseConnection(ServCnn& cnn) {
 void CaHttpServer::dump() {
 	ald("http server fd=%d, task=%0x, ptr=%0x", mLisSock.getFd(), (u64)mLisSock.getTask(), (u64)this);
 }
+
+UrlRegExMap* CaHttpServer::findMethodRegExMap(http_method method) {
+	UrlRegExMap *pm=nullptr;
+	for(auto &mr: mMethodRegVec) {
+		if(mr.first == method) {
+			pm = &mr.second;
+			break;
+		}
+	}
+	return pm;
 }
+
+} // namespace

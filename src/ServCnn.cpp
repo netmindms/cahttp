@@ -344,6 +344,6 @@ void ServCnn::init_local_msgque() {
 		}
 		return 0;
 	});
-	ali("lm handle=%d", handle);
+	ald("lm handle=%d", handle);
 }
 }

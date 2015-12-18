@@ -31,16 +31,16 @@ public:
 		SVRE_NEW_CONNECTION,
 		SVRE_CLOSE_CONNECTION,
 	};
-	typedef function<void (int, ServCnn&)> Lis;
+	typedef std::function<void (int, ServCnn&)> Lis;
 
 	CaHttpServer();
 	virtual ~CaHttpServer();
 	void setTaskNum(int num);
 
-	template<class T> void setUrl(http_method method, const string &url) {
-		setUrl<T>(method, string(url));
+	template<class T> void setUrl(http_method method, const std::string &url) {
+		setUrl<T>(method, std::string(url));
 	};
-	template<class T> void setUrl(http_method method, string &&url) {
+	template<class T> void setUrl(http_method method, std::string &&url) {
 		UrlMap* pmap=nullptr;
 		for(auto &mi: mMethodUrlVec) {
 			if(mi.first == method) {
@@ -59,46 +59,59 @@ public:
 	};
 
 #ifdef CAHTTP_REGEX_URLPATTERN
-	template<class T> void setUrlRegEx(std::regex &&ex) {
+	template<class T> void setUrlRegEx(http_method method, std::regex &&ex) {
+		UrlRegExMap *pm=findMethodRegExMap(method);
+		if(!pm) {
+			// add new regex url map
+			mMethodRegVec.emplace_back();
+			pm = &(mMethodRegVec.back().second);
+			mMethodRegVec.back().first = method;
+		}
 		pair<regex, UrlCtrlAlloc> reg = { move(ex),
 			[]() -> T* {
 				return new T;
 			}};
-		mUrlRegExMap.emplace_back(move(reg));
+		pm->emplace_back(move(reg));
+
+//		mUrlRegExMap.emplace_back(move(reg));
+
 	};
-	template<class T> void setUrlRegEx(const std::regex &ex) {
+	template<class T> void setUrlRegEx(http_method method, const std::regex &ex) {
 		std::regex tex = ex;
-		setUrlRegEx<T>(move(tex));
+		setUrlRegEx<T>(method, move(tex));
 	};
-	template<class T> void setUrlRegEx(const string &rstr) {
-		setUrlRegEx<T>(regex(rstr));
+
+	template<class T> void setUrlRegEx(http_method method, const std::string &rstr) {
+		setUrlRegEx<T>(method, regex(rstr));
 	};
 #endif
 
 	int start(int task_num);
 	void close();
 	const UrlMap* getUrlMap(http_method method);
-	UrlCtrlAlloc matchRegExUrl(smatch &result, const string& s);
+	UrlCtrlAlloc matchRegExUrl(http_method method, smatch &result, const std::string& s);
 	void config(const char* param, const char *val);
 	void setOnListener(Lis lis);
 	void closeAllConnections();
 	void dump();
 private:
 	int mTaskNum;
-	vector<ServTask*> mTasks;
-	string mIp;
+	std::vector<ServTask*> mTasks;
+	std::string mIp;
 	int mPort;
 	int mCfgCnnTimeout;
 	EdSocket mLisSock;
 	uint32_t mJobOrder;
 	std::vector<std::pair<http_method, UrlMap>> mMethodUrlVec;
 	UrlRegExMap mUrlRegExMap;
+	std::vector<std::pair<http_method, UrlRegExMap>> mMethodRegVec;
 	Lis mLis;
 	HttpServCnnCtx* mpCnnCtx;
 
 	void init_tasks(int task_num);
 	void notifyNewConnection(ServCnn& cnn);
 	void notifyCloseConnection(ServCnn& cnn);
+	UrlRegExMap* findMethodRegExMap(http_method method);
 };
 }
 #endif /* SRC_CAHTTPSERVER_H_ */
