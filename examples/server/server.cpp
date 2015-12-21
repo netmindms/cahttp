@@ -11,6 +11,7 @@
 #include <ednio/EdNio.h>
 #include <cahttp/CaHttpServer.h>
 #include <climits>
+#include <iostream>
 #include <cahttp/HttpFileReadStream.h>
 #include "FileUtil.h"
 
@@ -55,9 +56,10 @@ class ListFileUrl: public CaHttpUrlCtrl {
 class DirUrl: public CaHttpUrlCtrl {
 	void OnHttpReqMsg() override {
 		auto mph = getUrlMatchStr();
+
 		string dirpath = gApp.rootDir;
 		for(auto &ps: mph) {
-			dirpath += "/" + ps;
+			dirpath += ps;
 		}
 
 		string resp;
@@ -66,11 +68,11 @@ class DirUrl: public CaHttpUrlCtrl {
 		auto fl = FileUtil::getFileList(dirpath.data(), FileUtil::DIR_ONLY);
 		ls = "<ul style='list-style-type:none'>";
 		for(auto &f: fl) {
-			ls += "<li style='color:blue'><b><u><a href=/file/dir/" + f+ ">"+f+"</a></u></b></li>\n";
+			ls += "<li style='color:blue'><b><u><a href=/file/dir" + mph[0]+ f+"/>"+f+"</a></u></b></li>\n";
 		}
 		fl = FileUtil::getFileList(dirpath.data(), FileUtil::FILE_ONLY);
 		for(auto &f: fl) {
-			ls += "<li><a href=/file/download/" +f+ ">" + f+  "</a></li>\n";
+			ls += "<li><a href=/file/download"+ mph[0]+ f+ ">" + f+  "</a></li>\n";
 		}
 		ls += "</ul>\n";
 		resp += ls;
@@ -114,7 +116,8 @@ class MainTask: public EdTask {
 		if (msg.msgid == EDM_INIT) {
 			mServer.config("port", to_string(gApp.port).data());
 			mServer.setUrl<ListFileUrl>(HTTP_GET, "/file/list");
-			mServer.setUrlRegEx<DirUrl>(HTTP_GET, "/file/dir/(.*)");
+			mServer.setUrlRegEx<DirUrl>(HTTP_GET, "/file/dir(/[^\\?]*)");
+//			mServer.setUrlRegEx<DirUrl>(HTTP_GET, "/file/dir(/[^\\?]*)(.*)");
 			mServer.setUrlRegEx<DownloadUrl>(HTTP_GET, "/file/download/(.*)");
 			mServer.start(0);
 		}
