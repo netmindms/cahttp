@@ -9,8 +9,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <algorithm>
 #include "FileUtil.h"
 
+#include <string.h>
 using namespace std;
 
 
@@ -36,15 +38,25 @@ std::vector<std::string> FileUtil::getFileList(const char* dirpath, uint32_t fla
 	vector<string> result;
 	if ((dir = opendir(dirpath)) != NULL) {
 		while ((ent = readdir(dir)) != NULL) {
+			bool badd=false;
 			if(ent->d_type == DT_DIR) {
-				if(BIT_TEST(flag, FLB_DIR)) {
-					result.emplace_back(ent->d_name);
+				if((flag & FLB_DIR)) {
+					if(!strcmp(ent->d_name, "..") && !(flag & FLB_EXT_UPDIR)) {
+						badd = true;
+					} else if(strcmp(ent->d_name, ".")) {
+						badd = true;
+					}
 				}
-			} else if(ent->d_type == DT_REG || ent->d_type == DT_LNK) {
-				if(BIT_TEST(flag, FLB_FILE)) {
-					result.emplace_back(ent->d_name);
+			} else if(ent->d_type == DT_REG) { // || ent->d_type == DT_LNK) {
+				if(flag & FLB_FILE) {
+					badd=true;
 				}
 			}
+
+			if(badd) result.emplace_back(ent->d_name);
+		}
+		if(flag & FLB_SORT) {
+			std::sort(result.begin(), result.end());
 		}
 		closedir(dir);
 	}

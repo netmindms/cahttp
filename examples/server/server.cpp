@@ -8,10 +8,13 @@
 #define LOG_LEVEL LOG_INFO
 
 #include "app.h"
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
 #include <ednio/EdNio.h>
 #include <cahttp/CaHttpServer.h>
+#include <cahttp/CaHttpUrlParser.h>
 #include <climits>
-#include <iostream>
 #include <cahttp/HttpFileReadStream.h>
 #include "FileUtil.h"
 
@@ -22,7 +25,7 @@ using namespace cahttp;
 struct App {
 	App() {
 		port = 9000;
-		rootDir = "/usr/lib";
+		rootDir = "/etc";
 	}
 	int port;
 	string rootDir;
@@ -57,22 +60,25 @@ class DirUrl: public CaHttpUrlCtrl {
 	void OnHttpReqMsg() override {
 		auto mph = getUrlMatchStr();
 
-		string dirpath = gApp.rootDir;
-		for(auto &ps: mph) {
-			dirpath += ps;
-		}
-
+//		auto urlstr = getReqUrlStr();
+//		CaHttpUrlParser parser;
+//		parser.parse(urlstr);
+//		unordered_map<string, string> qvs;
+//		parser.parseKeyValueMap(&qvs, parser.query);
+		string dirpath = gApp.rootDir+mph[0];
+		printf("dir path = %s\n", dirpath.data());
 		string resp;
 		resp= "<html><head></head><body>";
+		resp += "<h1>Simple File Server</h1>";
 		string ls;
-		auto fl = FileUtil::getFileList(dirpath.data(), FileUtil::DIR_ONLY);
+		auto fl = FileUtil::getFileList(dirpath.data(), FileUtil::DIR_ONLY|FLB_SORT);
 		ls = "<ul style='list-style-type:none'>";
 		for(auto &f: fl) {
-			ls += "<li style='color:blue'><b><u><a href=/file/dir" + mph[0]+ f+"/>"+f+"</a></u></b></li>\n";
+			ls += "<li style='color:blue'><b><u><a href=/file/dir" + mph[0]+ f+"/>"+"+ "+f+"</a></u></b></li>\n";
 		}
-		fl = FileUtil::getFileList(dirpath.data(), FileUtil::FILE_ONLY);
+		fl = FileUtil::getFileList(dirpath.data(), FileUtil::FILE_ONLY|FLB_SORT);
 		for(auto &f: fl) {
-			ls += "<li><a href=/file/download"+ mph[0]+ f+ ">" + f+  "</a></li>\n";
+			ls += "<li><a style='text-decoration:none' href=/file/download/"+mph[0]+f+ ">&nbsp;&nbsp" + f+  "</a></li>\n";
 		}
 		ls += "</ul>\n";
 		resp += ls;
@@ -86,12 +92,13 @@ class DownloadUrl: public CaHttpUrlCtrl {
 	HttpFileReadStream mFileStrm;
 	void OnHttpReqMsg() override {
 		auto &vs = getUrlMatchStr();
+		ali("match path=%s", vs[0]);
 		if(vs.empty()) {
 			response(404, "File Not Found");
 			return;
 		}
 		string path;
-		path = gApp.rootDir+"/"+vs[0];
+		path = gApp.rootDir+vs[0];
 		if(FileUtil::isExist(path)) {
 			mFileStrm.open(path.data());
 			addRespHdr(CAS::HS_CONTENT_TYPE, CAS::CT_APP_OCTET);
@@ -101,9 +108,6 @@ class DownloadUrl: public CaHttpUrlCtrl {
 			response(404, "File Not Found");
 			return;
 		}
-
-		string downpath = gApp.rootDir+"/"+ path;
-		mFileStrm.open(downpath.data());
 	}
 
 	void OnHttpEnd() override {
@@ -116,9 +120,10 @@ class MainTask: public EdTask {
 		if (msg.msgid == EDM_INIT) {
 			mServer.config("port", to_string(gApp.port).data());
 			mServer.setUrl<ListFileUrl>(HTTP_GET, "/file/list");
-			mServer.setUrlRegEx<DirUrl>(HTTP_GET, "/file/dir(/[^\\?]*)");
+			mServer.setUrlRegEx<DirUrl>(HTTP_GET, "/file/dir(/.*)");
+//			mServer.setUrlRegEx<DirUrl>(HTTP_GET, "/file/dir(/[^\\?]*)");
 //			mServer.setUrlRegEx<DirUrl>(HTTP_GET, "/file/dir(/[^\\?]*)(.*)");
-			mServer.setUrlRegEx<DownloadUrl>(HTTP_GET, "/file/download/(.*)");
+			mServer.setUrlRegEx<DownloadUrl>(HTTP_GET, "/file/download(/.*)");
 			mServer.start(0);
 		}
 		else if (msg.msgid == EDM_CLOSE) {
@@ -129,8 +134,15 @@ class MainTask: public EdTask {
 };
 
 
+void init_app() {
+	struct passwd *pw = getpwuid(getuid());
+	const char *homedir = pw->pw_dir;
+	gApp.rootDir = homedir;
+}
+
 int main(int argc, char* argv[]) {
 	EdNioInit();
+	init_app();
 	MainTask task;
 	task.runMain();
 	return 0;

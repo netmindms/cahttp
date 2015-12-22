@@ -15,16 +15,17 @@
 
 #define FLB_FILE 1
 #define FLB_DIR 2
-#define FLB_EXT_CURDIR 3
-#define FLB_EXT_UPDIR 4
+#define FLB_EXT_CURDIR 4
+#define FLB_EXT_UPDIR 8
+#define FLB_SORT 16
 
 class FileUtil
 {
 public:
 	enum {
-		FILE_ONLY=(1<<FLB_FILE),
-		DIR_ONLY=(1<<FLB_DIR),
-		DIR_FILE=(1<<FLB_FILE)|(1<<FLB_DIR),
+		FILE_ONLY=FLB_FILE,
+		DIR_ONLY=FLB_DIR,
+		DIR_FILE=FLB_FILE | FLB_DIR,
 	};
 	FileUtil();
 	virtual ~FileUtil();
