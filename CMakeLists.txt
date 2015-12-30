@@ -26,7 +26,8 @@ file(GLOB ALLSRCS "src/*.cpp" "src/*.cc" )
 
 add_library(cahttp SHARED ${ALLSRCS})
 target_link_libraries(cahttp "pthread" "ednio")
-set_target_properties(cahttp PROPERTIES SOVERSION 0 VERSION ${CAHTTP_VER})
+#set_target_properties(cahttp PROPERTIES SOVERSION 0 VERSION ${CAHTTP_VER})
+set_target_properties(cahttp PROPERTIES SOVERSION ${CAHTTP_VER_MAJOR}.${CAHTTP_VER_MINOR} VERSION ${CAHTTP_VER})
 install(TARGETS cahttp DESTINATION lib ) 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/src/ DESTINATION include/cahttp
         FILES_MATCHING PATTERN "*.h")
