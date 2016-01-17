@@ -1,14 +1,14 @@
 #define LOG_LEVEL LOG_INFO
 
-#include "../src/flog.h"
+#include "../cahttp/flog.h"
 #include <sys/utsname.h>
 #include <gtest/gtest.h>
 #include <ednio/EdNio.h>
-#include <cahttp/HttpFileReadStream.h>
-#include <cahttp/HttpFileWriteStream.h>
-#include <cahttp/CaHttpServer.h>
-#include <cahttp/CaHttpUrlParser.h>
-#include <cahttp/CaHttpReqMan.h>
+#include "../cahttp/HttpFileReadStream.h"
+#include "../cahttp/HttpFileWriteStream.h"
+#include "../cahttp/CaHttpServer.h"
+#include "../cahttp/CaHttpUrlParser.h"
+#include "../cahttp/CaHttpReqMan.h"
 
 #define SERVER_PORT 9000
 

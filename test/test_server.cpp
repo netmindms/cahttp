@@ -7,14 +7,14 @@
  */
 #define LOG_LEVEL LOG_INFO
 
-#include "../src/flog.h"
+#include "../cahttp/flog.h"
 #include <vector>
 #include <gtest/gtest.h>
 #include <ednio/EdNio.h>
-#include <cahttp/CaHttpServer.h>
-#include <cahttp/CaHttpUrlCtrl.h>
-#include <cahttp/HttpFileReadStream.h>
-#include <cahttp/CaHttpUrlParser.h>
+#include "../cahttp/CaHttpServer.h"
+#include "../cahttp/CaHttpUrlCtrl.h"
+#include "../cahttp/HttpFileReadStream.h"
+#include "../cahttp/CaHttpUrlParser.h"
 #include <stdlib.h>
 #include <string.h>
 #include <sys/utsname.h>
