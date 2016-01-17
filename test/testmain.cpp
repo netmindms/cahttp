@@ -18,6 +18,7 @@ int main(int argc, char* argv[]) {
 	cout << "cahttp test main" << endl;
 //	serverlive();
 	::testing::InitGoogleTest(&argc, argv);
+	::testing::GTEST_FLAG(filter) = "strm.*";
 //	::testing::GTEST_FLAG(filter) = "request.*";
 //	::testing::GTEST_FLAG(filter) = "request.connection";
 //	::testing::GTEST_FLAG(filter) = "request.recv_file";
@@ -31,7 +32,7 @@ int main(int argc, char* argv[]) {
 //	::testing::GTEST_FLAG(filter) = "request.stream_send";
 //	::testing::GTEST_FLAG(filter) = "request.simple";
 	//	::testing::GTEST_FLAG(filter) = "ipc.mq";
-	::testing::GTEST_FLAG(filter) = "server.*";
+//	::testing::GTEST_FLAG(filter) = "server.*";
 //	::testing::GTEST_FLAG(filter) = "server.regex";
 //	::testing::GTEST_FLAG(filter) = "server.tec";
 //	::testing::GTEST_FLAG(filter) = "server.reqdata";
