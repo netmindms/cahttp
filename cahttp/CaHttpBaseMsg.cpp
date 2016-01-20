@@ -4,7 +4,7 @@
  *  Created on: Oct 5, 2015
  *      Author: root
  */
-#define LOG_LEVEL LOG_INFO
+#define LOG_LEVEL LOG_DEBUG
 
 
 #include <climits>

@@ -42,6 +42,7 @@
 # include <windows.h>
 #endif
 
+using namespace cahttp;
 using fmt::internal::Arg;
 
 // Check if exceptions are disabled.

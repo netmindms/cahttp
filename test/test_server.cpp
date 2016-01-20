@@ -579,13 +579,13 @@ TEST(server, autosend) {
 
 	string resp;
 
-	resp = execCurl("GET", "/auto-send");
-	ASSERT_STREQ(resp.data(), "auto-send");
-
-
+//	resp = execCurl("GET", "/auto-send");
+//	ASSERT_STREQ(resp.data(), "auto-send");
+//
+//
 	string filedata = loadFileData();
-	resp = execCurl("GET", "/auto-file");
-	ASSERT_EQ((resp==filedata), true);
+//	resp = execCurl("GET", "/auto-file");
+//	ASSERT_EQ((resp==filedata), true);
 
 	resp = execCurl("GET", "/auto-trans-enc-file");
 	ASSERT_EQ((resp==filedata), true);

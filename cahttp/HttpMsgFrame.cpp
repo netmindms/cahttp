@@ -1,37 +1,37 @@
 /*
- * CaHttpFrame.cpp
+ * HttpMsgFrame.cpp
  *
  *  Created on: Apr 13, 2015
  *      Author: netmind
  */
-#define LOG_LEVEL LOG_INFO
+#define LOG_LEVEL LOG_DEBUG
 #include <climits>
 #include "flog.h"
-#include "CaHttpFrame.h"
+#include "HttpMsgFrame.h"
 
 namespace cahttp {
 static http_parser_settings _parserSettings;
 
-class _CAHTTP_FRAME_MODULE_INITIALIZER {
+class _HTTP_MSG_FRAME_MODULE_INITIALIZER {
 public:
-	_CAHTTP_FRAME_MODULE_INITIALIZER() {
-		_parserSettings.on_message_begin = CaHttpFrame::msg_begin;
-		_parserSettings.on_message_complete = CaHttpFrame::msg_end;
-		_parserSettings.on_url = CaHttpFrame::on_url;
-		_parserSettings.on_status = CaHttpFrame::on_status;
-		_parserSettings.on_header_field = CaHttpFrame::head_field_cb;
-		_parserSettings.on_header_value = CaHttpFrame::head_val_cb;
-		_parserSettings.on_headers_complete = CaHttpFrame::on_headers_complete;
-		_parserSettings.on_body = CaHttpFrame::body_cb;
-		_parserSettings.on_chunk_header = CaHttpFrame::chunk_header_cb;
-		_parserSettings.on_chunk_complete = CaHttpFrame::chunk_comp_cb;
+	_HTTP_MSG_FRAME_MODULE_INITIALIZER() {
+		_parserSettings.on_message_begin = HttpMsgFrame::msg_begin;
+		_parserSettings.on_message_complete = HttpMsgFrame::msg_end;
+		_parserSettings.on_url = HttpMsgFrame::on_url;
+		_parserSettings.on_status = HttpMsgFrame::on_status;
+		_parserSettings.on_header_field = HttpMsgFrame::head_field_cb;
+		_parserSettings.on_header_value = HttpMsgFrame::head_val_cb;
+		_parserSettings.on_headers_complete = HttpMsgFrame::on_headers_complete;
+		_parserSettings.on_body = HttpMsgFrame::body_cb;
+		_parserSettings.on_chunk_header = HttpMsgFrame::chunk_header_cb;
+		_parserSettings.on_chunk_complete = HttpMsgFrame::chunk_comp_cb;
 	}
 
 };
 
-static _CAHTTP_FRAME_MODULE_INITIALIZER _mod_init;
+static _HTTP_MSG_FRAME_MODULE_INITIALIZER _mod_init;
 
-CaHttpFrame::CaHttpFrame() {
+HttpMsgFrame::HttpMsgFrame() {
 	mIsServer = false;
 //	mStatus = 0;
 	mPs = PS_INIT;
@@ -41,11 +41,11 @@ CaHttpFrame::CaHttpFrame() {
 	mContentLen = 0;
 }
 
-CaHttpFrame::~CaHttpFrame() {
+HttpMsgFrame::~HttpMsgFrame() {
 }
 
 #if 1
-int CaHttpFrame::fetchMsg(CaHttpMsg& msg) {
+int HttpMsgFrame::fetchMsg(CaHttpMsg& msg) {
 	if (mMsgList.size() == 0) {
 		if (mReadStatus & 0x01) {
 			msg = move(mMsg);
@@ -78,7 +78,7 @@ int CaHttpFrame::fetchMsg(CaHttpMsg& msg) {
 	}
 }
 #else
-CaHttpMsg CaHttpFrame::fetchMsg() {
+CaHttpMsg HttpMsgFrame::fetchMsg() {
 #if 0
 	auto itr = mMsgList.begin();
 	if(itr != mMsgList.end()) {
@@ -97,7 +97,7 @@ CaHttpMsg CaHttpFrame::fetchMsg() {
 #endif
 
 #if 1
-int CaHttpFrame::fetchData(string& data) {
+int HttpMsgFrame::fetchData(string& data) {
 	ald("fetchData, read status=%d, cur data len=%ld", mReadStatus, mBodyData.size());
 	if (mMsgList.size() == 0) {
 		assert(mContentLen != 0);
@@ -140,7 +140,7 @@ int CaHttpFrame::fetchData(string& data) {
 	}
 }
 #else
-string CaHttpFrame::fetchData() {
+string HttpMsgFrame::fetchData() {
 #if 1
 	auto itr = mMsgList.begin();
 	if(itr != mMsgList.end()) {
@@ -158,24 +158,24 @@ string CaHttpFrame::fetchData() {
 }
 #endif
 
-size_t CaHttpFrame::feedPacket(const char* buf, size_t len) {
+size_t HttpMsgFrame::feedPacket(const char* buf, size_t len) {
 	auto ret = http_parser_execute(&mParser, &_parserSettings, buf, len);
 //	ald("parse ret=%d", ret);
 	return ret;
 }
 
-size_t CaHttpFrame::feedPacket(vector<char> && pkt) {
+size_t HttpMsgFrame::feedPacket(vector<char> && pkt) {
 	return feedPacket(pkt.data(), pkt.size());
 }
 
-int CaHttpFrame::init(bool server) {
+int HttpMsgFrame::init(bool server) {
 	clear();
 	mIsServer = server;
 	initHttpParser();
 	return 0;
 }
 
-int CaHttpFrame::status() const {
+int HttpMsgFrame::status() const {
 	uint8_t rs;
 	if (mMsgList.size() == 0) {
 		rs = mReadStatus;
@@ -193,55 +193,55 @@ int CaHttpFrame::status() const {
 		return FS_NONE;
 }
 
-void CaHttpFrame::initHttpParser() {
+void HttpMsgFrame::initHttpParser() {
 	http_parser_init(&mParser, mIsServer ? HTTP_REQUEST : HTTP_RESPONSE);
 	mParser.data = this;
 }
 
-int CaHttpFrame::head_field_cb(http_parser* parser, const char *at, size_t length) {
-	CaHttpFrame* pcnn = (CaHttpFrame*) parser->data;
+int HttpMsgFrame::head_field_cb(http_parser* parser, const char *at, size_t length) {
+	HttpMsgFrame* pcnn = (HttpMsgFrame*) parser->data;
 	return pcnn->dgHeaderNameCb(parser, at, length);
 }
 
-int CaHttpFrame::head_val_cb(http_parser* parser, const char *at, size_t length) {
-	CaHttpFrame *pcnn = (CaHttpFrame*) parser->data;
+int HttpMsgFrame::head_val_cb(http_parser* parser, const char *at, size_t length) {
+	HttpMsgFrame *pcnn = (HttpMsgFrame*) parser->data;
 	return pcnn->dgHeaderValCb(parser, at, length);
 }
 
-int CaHttpFrame::body_cb(http_parser* parser, const char *at, size_t length) {
-	CaHttpFrame *pcnn = (CaHttpFrame*) parser->data;
+int HttpMsgFrame::body_cb(http_parser* parser, const char *at, size_t length) {
+	HttpMsgFrame *pcnn = (HttpMsgFrame*) parser->data;
 	return pcnn->dgbodyDataCb(parser, at, length);
 }
 
-int CaHttpFrame::msg_begin(http_parser* parser) {
-	CaHttpFrame *pcnn = (CaHttpFrame*) parser->data;
+int HttpMsgFrame::msg_begin(http_parser* parser) {
+	HttpMsgFrame *pcnn = (HttpMsgFrame*) parser->data;
 	return pcnn->dgMsgBeginCb(parser);
 
 }
 
-int CaHttpFrame::msg_end(http_parser* parser) {
-	CaHttpFrame *pcnn = (CaHttpFrame*) parser->data;
+int HttpMsgFrame::msg_end(http_parser* parser) {
+	HttpMsgFrame *pcnn = (HttpMsgFrame*) parser->data;
 	return pcnn->dgMsgEndCb(parser);
 }
 
-int CaHttpFrame::on_url(http_parser* parser, const char* at, size_t length) {
-	CaHttpFrame *pcnn = (CaHttpFrame*) parser->data;
+int HttpMsgFrame::on_url(http_parser* parser, const char* at, size_t length) {
+	HttpMsgFrame *pcnn = (HttpMsgFrame*) parser->data;
 	return pcnn->dgUrlCb(parser, at, length);
 }
 
-int CaHttpFrame::on_headers_complete(http_parser* parser) {
-	CaHttpFrame *pcnn = (CaHttpFrame*) parser->data;
+int HttpMsgFrame::on_headers_complete(http_parser* parser) {
+	HttpMsgFrame *pcnn = (HttpMsgFrame*) parser->data;
 	return pcnn->dgHeaderComp(parser);
 
 }
 
-int CaHttpFrame::on_status(http_parser* parser, const char* at, size_t length) {
+int HttpMsgFrame::on_status(http_parser* parser, const char* at, size_t length) {
 
-	CaHttpFrame *pf = (CaHttpFrame*) parser->data;
+	HttpMsgFrame *pf = (HttpMsgFrame*) parser->data;
 	return pf->dgFirstLineStatus(parser, at, length);
 }
 
-int CaHttpFrame::dgHeaderNameCb(http_parser*, const char* at, size_t length) {
+int HttpMsgFrame::dgHeaderNameCb(http_parser*, const char* at, size_t length) {
 	ald("parser hdr name cb, str=%s", string(at, length));
 	if (mPs == PS_FIRST_LINE) {
 		procFirstLine();
@@ -256,14 +256,14 @@ int CaHttpFrame::dgHeaderNameCb(http_parser*, const char* at, size_t length) {
 	return 0;
 }
 
-int CaHttpFrame::dgHeaderValCb(http_parser*, const char* at, size_t length) {
+int HttpMsgFrame::dgHeaderValCb(http_parser*, const char* at, size_t length) {
 	ald("parser hdr val cb, str=%s", string(at, length));
 	mCurHdrVal.append(at, length);
 	return 0;
 
 }
 
-int CaHttpFrame::dgHeaderComp(http_parser* parser) {
+int HttpMsgFrame::dgHeaderComp(http_parser* parser) {
 	if (mCurHdrVal.empty() == false) {
 		ald("header comp, name=%s, val=%s", mCurHdrName, mCurHdrVal);
 		procHeader();
@@ -307,7 +307,7 @@ int CaHttpFrame::dgHeaderComp(http_parser* parser) {
 	return 0;
 }
 
-int CaHttpFrame::dgbodyDataCb(http_parser* parser, const char* at, size_t length) {
+int HttpMsgFrame::dgbodyDataCb(http_parser* parser, const char* at, size_t length) {
 	ald("body data cb..., data=%s", string(at, length));
 	if (mPs == PS_HEADER) {
 		mPs = PS_BODY;
@@ -319,7 +319,7 @@ int CaHttpFrame::dgbodyDataCb(http_parser* parser, const char* at, size_t length
 	return 0;
 }
 
-int CaHttpFrame::dgMsgBeginCb(http_parser* parser) {
+int HttpMsgFrame::dgMsgBeginCb(http_parser* parser) {
 	ald("msg begin cb...");
 	if (mMsg.getMsgClass()) {
 		mMsgList.emplace_back();
@@ -340,29 +340,29 @@ int CaHttpFrame::dgMsgBeginCb(http_parser* parser) {
 	return 0;
 }
 
-int CaHttpFrame::dgMsgEndCb(http_parser* parser) {
+int HttpMsgFrame::dgMsgEndCb(http_parser* parser) {
 	ald("msg end cb...");
 //	mPs = PS_INIT;
 	mPs = PS_END;
 	return 0;
 }
 
-int CaHttpFrame::chunk_header_cb(http_parser* parser) {
+int HttpMsgFrame::chunk_header_cb(http_parser* parser) {
 	ald("chunk header cb...");
 	return 0;
 }
 
-int CaHttpFrame::chunk_comp_cb(http_parser* parser) {
+int HttpMsgFrame::chunk_comp_cb(http_parser* parser) {
 	ald("chunk complete cb...");
 	return 0;
 }
 
-void CaHttpFrame::procFirstLine() {
+void HttpMsgFrame::procFirstLine() {
 	ald("proc first line");
 	mPs = PS_HEADER;
 }
 
-void CaHttpFrame::procHeader() {
+void HttpMsgFrame::procHeader() {
 //	if (mCurCtrl != NULL)
 //		mCurCtrl->addReqHeader(move(mCurHdrName), move(mCurHdrVal));
 
@@ -371,19 +371,19 @@ void CaHttpFrame::procHeader() {
 	mCurHdrVal.clear();
 }
 
-int CaHttpFrame::dgUrlCb(http_parser* parser, const char* at, size_t length) {
+int HttpMsgFrame::dgUrlCb(http_parser* parser, const char* at, size_t length) {
 	ald("url cb");
 	ald("  %s", string(at, length));
 	mMsg.setUrl(at, length);
 	return 0;
 }
 
-void CaHttpFrame::recycleDataBuf(string&& bufstr) {
+void HttpMsgFrame::recycleDataBuf(string&& bufstr) {
 	bufstr.clear();
 	mBodyData = move(bufstr);
 }
 
-void CaHttpFrame::clear() {
+void HttpMsgFrame::clear() {
 	mPs = PS_INIT;
 	mContentLen = 0;
 	mReadLen = 0;
@@ -393,32 +393,32 @@ void CaHttpFrame::clear() {
 	mMsgList.clear();
 }
 
-string CaHttpFrame::pullPacket() {
+string HttpMsgFrame::pullPacket() {
 	string ts = move(mEncPkt);
 	mEncPkt.clear();
 	return move(ts);
 }
 
-int CaHttpFrame::dgFirstLineStatus(http_parser* parser, const char* at, size_t length) {
+int HttpMsgFrame::dgFirstLineStatus(http_parser* parser, const char* at, size_t length) {
 	ald("first line status: code=%d", parser->status_code);
 	ald("   status=%s", string(at, length));
 	return 0;
 }
 
-void CaHttpFrame::setHost(const string& hostname) {
+void HttpMsgFrame::setHost(const string& hostname) {
 	mHost = hostname;
 }
 
-void CaHttpFrame::setUserAgent(const string& agent) {
+void HttpMsgFrame::setUserAgent(const string& agent) {
 	mAgent = agent;
 }
 
-void CaHttpFrame::frameMsg(CaHttpMsg& msg) {
+void HttpMsgFrame::frameMsg(CaHttpMsg& msg) {
 	mEncPkt = msg.serialize();
 	ald("frame msg: \n%s", mEncPkt);
 }
 
-void CaHttpFrame::frameData(string&& data) {
+void HttpMsgFrame::frameData(string&& data) {
 	if (mEncPkt.empty() == true) {
 		ald("frame data move...");
 		mEncPkt = move(data);
@@ -429,7 +429,7 @@ void CaHttpFrame::frameData(string&& data) {
 	}
 }
 
-bool CaHttpFrame::isEmptyPacket() {
+bool HttpMsgFrame::isEmptyPacket() {
 	return mEncPkt.empty();
 }
 }

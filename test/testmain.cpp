@@ -15,10 +15,9 @@ void serverlive();
 
 int main(int argc, char* argv[]) {
  	edft::EdNioInit();
-	cout << "cahttp test main" << endl;
 //	serverlive();
 	::testing::InitGoogleTest(&argc, argv);
-	::testing::GTEST_FLAG(filter) = "strm.*";
+//	::testing::GTEST_FLAG(filter) = "strm.*";
 //	::testing::GTEST_FLAG(filter) = "request.*";
 //	::testing::GTEST_FLAG(filter) = "request.connection";
 //	::testing::GTEST_FLAG(filter) = "request.recv_file";
@@ -38,6 +37,7 @@ int main(int argc, char* argv[]) {
 //	::testing::GTEST_FLAG(filter) = "server.reqdata";
 //	::testing::GTEST_FLAG(filter) = "server.manualsend";
 //	::testing::GTEST_FLAG(filter) = "server.autosend";
+//	::testing::GTEST_FLAG(filter) = "msg.tec";
 
 
 	auto ret = RUN_ALL_TESTS();

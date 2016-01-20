@@ -171,6 +171,7 @@ inline uint32_t clzll(uint64_t x) {
     TypeName& operator=(const TypeName&)
 #endif
 
+namespace cahttp {
 namespace fmt {
 
 // Fix the warning about long long on older versions of GCC
@@ -2515,7 +2516,7 @@ inline void format_decimal(char *&buffer, T value) {
   buffer += num_digits;
 }
 }
-
+} // namespace cahttp
 #if FMT_GCC_VERSION
 // Use the system_header pragma to suppress warnings about variadic macros
 // because suppressing -Wvariadic-macros with the diagnostic pragma doesn't
@@ -2621,6 +2622,7 @@ inline void format_decimal(char *&buffer, T value) {
 #define FMT_VARIADIC_W(ReturnType, func, ...) \
   FMT_VARIADIC_(wchar_t, ReturnType, func, return func, __VA_ARGS__)
 
+namespace cahttp {
 namespace fmt {
 FMT_VARIADIC(std::string, format, StringRef)
 FMT_VARIADIC_W(std::wstring, format, WStringRef)
@@ -2632,6 +2634,7 @@ FMT_VARIADIC(std::string, sprintf, StringRef)
 FMT_VARIADIC(int, printf, StringRef)
 FMT_VARIADIC(int, fprintf, std::FILE *, StringRef)
 }
+} // namespace cahttp
 
 // Restore warnings.
 #if FMT_GCC_VERSION >= 406

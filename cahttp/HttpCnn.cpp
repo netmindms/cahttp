@@ -165,10 +165,14 @@ void HttpCnn::procRead() {
 	char buf[2048];
 	int rcnt = mSock.recvPacket(buf, 2048);
 	if (rcnt > 0) {
+		// debug
+		buf[rcnt]=0;
+		ald("recv socket data:\n%s\n", buf);
 		mFrame.feedPacket(buf, rcnt);
 		int fs;
 		for (;;) {
 			fs = mFrame.status();
+			ald("fs: frame status=%d", fs);
 			if (fs == mFrame.FS_HDR) {
 				ald("fs: header received");
 				assert(mCurMsgInfo.msgStrm);
@@ -194,7 +198,7 @@ void HttpCnn::procRead() {
 				mRespBuf.clear();
 				auto res = mFrame.fetchData(mRespBuf);
 				ald("fetch data, size=%d, result=%d", mRespBuf.size(), res);
-				if (!mRespBuf.empty()) {
+				if (1) {//!mRespBuf.empty()) {
 					mCurMsgInfo.dataLis(move(mRespBuf), res==mFrame.MSG_DATA_END);
 					if(res == mFrame.MSG_DATA_END) {
 						mCurMsgInfo.lis(CE_RECV_MSG);
@@ -204,12 +208,14 @@ void HttpCnn::procRead() {
 							mCurMsgInfo = pimsg;
 							mPipeList.pop_front();
 						} else {
-							ali("no pipe msg, ...");
+							ald("no pipe msg, ...");
 							mCurMsgInfo.msgStrm = nullptr;
 							mCurMsgInfo.lis = nullptr;
 							mCurMsgInfo.dataLis = nullptr;
 							break;
 						}
+					} else if(res == mFrame.MSG_DATA_EMPTY) {
+						break;
 					}
 				} else {
 //					if(res == mFrame.MSG_DATA_END) mLis(CE_RESP_END);
