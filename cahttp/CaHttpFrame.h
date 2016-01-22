@@ -51,7 +51,7 @@ public:
 	CaHttpFrame();
 	virtual ~CaHttpFrame();
 	int init(bool server=false);
-	size_t feedPacket(vector<char> &&pkt);
+	size_t feedPacket(std::vector<char> &&pkt);
 	size_t feedPacket(const char* buf, size_t len);
 //	CaHttpMsg fetchMsg();
 	int fetchMsg(CaHttpMsg& msg);

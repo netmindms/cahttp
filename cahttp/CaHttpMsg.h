@@ -25,7 +25,7 @@ public:
 	};
 	*/
 	CaHttpMsg(CaHttpMsg &&other) { // move constructor
-		*this = move(other);
+		*this = std::move(other);
 	};
 
 	CaHttpMsg& operator=(CaHttpMsg &&other) { // move operator

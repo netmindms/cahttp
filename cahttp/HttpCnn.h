@@ -27,7 +27,7 @@ class HttpCnn
 public:
 	enum CE { CE_FAIL=-1, CE_SEND_COMPLETE, CE_CLOSED, CE_UNDERRUN, CE_RECV_MSGHDR, CE_RECV_DATA, CE_RECV_MSG, CE_RECV_END} ;
 	typedef std::function<int(CE)> Lis;
-	typedef std::function<void(string&& data, int data_status)> DataLis;
+	typedef std::function<void(std::string&& data, int data_status)> DataLis;
 	HttpCnn();
 	virtual ~HttpCnn();
 	void setHostIpAddr(const std::string &ipaddr, int port=80);
@@ -55,7 +55,7 @@ private:
 	CaHttpFrame mFrame;
 	int mError;
 	EdTimer mCnnTimer;
-	string mRespBuf;
+	std::string mRespBuf;
 	CaHttpMsg mRecvMsg;
 	std::list<msg_pipe_t> mPipeList;
 	std::list<msg_pipe_t*> mSendQueList;

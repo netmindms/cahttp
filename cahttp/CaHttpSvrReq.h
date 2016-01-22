@@ -26,7 +26,7 @@ public:
 private:
 	CaHttpMsg mReqMsg;
 //	unique_ptr<HttpBaseReadStream> mRespHdrStream;
-	unique_ptr<HttpBaseWriteStream> mReqWriteStream;
+	std::unique_ptr<HttpBaseWriteStream> mReqWriteStream;
 //	std::string mStrBuf;
 
 	void setReqMsg(CaHttpMsg &&msg);

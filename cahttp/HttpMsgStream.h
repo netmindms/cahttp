@@ -32,7 +32,7 @@ private:
 	HttpStringReadStream mHdrStrm;
 	HttpBaseReadStream *mDataStrm;
 	upHttpBaseReadStream mDefDataStrm;
-	string mTecPartBuf;
+	std::string mTecPartBuf;
 	size_t mChunkSize;
 	int64_t mContentLen;
 	int64_t mReadDataCnt;

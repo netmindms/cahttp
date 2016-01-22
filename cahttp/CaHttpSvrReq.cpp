@@ -8,6 +8,8 @@
 #include "CaHttpSvrReq.h"
 
 #include "HttpStringReadStream.h"
+using namespace std;
+
 namespace cahttp {
 CaHttpSvrReq::CaHttpSvrReq() {
 	// TODO Auto-generated constructor stub

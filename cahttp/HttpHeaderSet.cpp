@@ -6,6 +6,8 @@
  */
 
 #include "HttpHeaderSet.h"
+using namespace std;
+
 namespace cahttp {
 HttpHeaderSet::HttpHeaderSet() {
 

@@ -7,6 +7,8 @@
 
 #include "CaHttpCommon.h"
 #include "CaSimpleHeaderEnc.h"
+using namespace std;
+
 namespace cahttp {
 CaSimpleHeaderEnc::CaSimpleHeaderEnc() {
 	// TODO Auto-generated constructor stub

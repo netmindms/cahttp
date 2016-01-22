@@ -37,22 +37,22 @@ public:
 	void response(int status);
 	void response(int status, const std::string& data, const std::string& content_type="plain/text");
 	void response(int status, std::string&& data, std::string&& content_type);
-	void response(int status, vector<hdrpair> &&hdrlist, HttpBaseReadStream *strm);
-	const vector<std::string> &getUrlMatchStr();
+	void response(int status, std::vector<hdrpair> &&hdrlist, HttpBaseReadStream *strm);
+	const std::vector<std::string> &getUrlMatchStr();
 	ServCnn& getConnection() { return *mCnn;};
 	int getRespCode();
 	std::string dump();
 	int sendData(const char* ptr, size_t len);
-	int sendString(const string& str);
-	void addRespHdr(const string &name, const string &val);
+	int sendString(const std::string& str);
+	void addRespHdr(const std::string &name, const std::string &val);
 	void setRespContent(const char* ptr, int64_t data_len, std::string&& ctype, bool tec=false);
 	void setRespContent(const std::string &str, std::string&& ctype, bool tec=false);
 	void setRespContent(HttpBaseReadStream *strm , int64_t len);
-	const string& getReqHdr(const char* name);
+	const std::string& getReqHdr(const char* name);
 	uint32_t getHandle();
 	uint64_t getContentLen();
-	const string& getReqUrlStr();
-	const string& getReqData();
+	const std::string& getReqUrlStr();
+	const std::string& getReqData();
 	void setReqDataStream(HttpBaseWriteStream *strm);
 
 private:
@@ -61,24 +61,24 @@ private:
 	ServCnn *mCnn;
 	HttpStringReadStream mHdrStrm;
 	HttpBaseWriteStream *mReqDataStrm;
-	unique_ptr<HttpBaseWriteStream> mDefStrm;
-	unique_ptr<HttpBaseReadStream> mpuSelfDataStrm;
+	std::unique_ptr<HttpBaseWriteStream> mDefStrm;
+	std::unique_ptr<HttpBaseReadStream> mpuSelfDataStrm;
 	HttpBaseReadStream *mDataStrm;
-	vector<std::string> mUrlMatchRes;
+	std::vector<std::string> mUrlMatchRes;
 	int64_t mWriteCnt, mDataReadCnt;
-	string mRespData;
+	std::string mRespData;
 	int64_t mRespContentLen;
 	uint8_t mFlag;
-	pair<const char*, int64_t> mChkPtr;
-	unique_ptr<HttpStringReadStream> mChkStrm;
+	std::pair<const char*, int64_t> mChkPtr;
+	std::unique_ptr<HttpStringReadStream> mChkStrm;
 	int mRespCode;
 	uint32_t mHandle;
 
 	// request processing
 	void procIncomingReqMsg(ServCnn* pcnn, CaHttpMsg &&msg, bool msgonly);
-	void procInReqData(string &&data, bool dataend);
+	void procInReqData(std::string &&data, bool dataend);
 
-	void setUrlMatchResult(const smatch &match);
+	void setUrlMatchResult(const std::smatch &match);
 	void setConnection(ServCnn &cnn);
 	std::pair<const char*, int64_t> getDataPtr();
 	void consume(size_t len);
@@ -93,12 +93,12 @@ private:
 
 typedef struct {
 	std::regex ex;
-	function<CaHttpUrlCtrl* ()> allocCtrl;
+	std::function<CaHttpUrlCtrl* ()> allocCtrl;
 } url_regex_info;
 
-typedef function<CaHttpUrlCtrl* ()> UrlCtrlAlloc;
-typedef unique_ptr<CaHttpUrlCtrl> upCaHttpUrlCtrl;
-typedef unordered_map<std::string, UrlCtrlAlloc> UrlMap;
-typedef list<pair<regex, UrlCtrlAlloc> > UrlRegExMap;
+typedef std::function<CaHttpUrlCtrl* ()> UrlCtrlAlloc;
+typedef std::unique_ptr<CaHttpUrlCtrl> upCaHttpUrlCtrl;
+typedef std::unordered_map<std::string, UrlCtrlAlloc> UrlMap;
+typedef std::list<std::pair<std::regex, UrlCtrlAlloc> > UrlRegExMap;
 }
 #endif /* SRC_CAHTTPURLCTRL_H_ */
