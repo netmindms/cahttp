@@ -18,13 +18,18 @@ namespace cahttp {
 
 class BaseConnection {
 public:
+	typedef std::function<void (CaHttpMsg&, int)> MsgLis;
 	BaseConnection();
 	virtual ~BaseConnection();
 	class CnnIf {
+	public:
 		virtual void OnRecvMsg(CaHttpMsg& msg)=0;
 		virtual void OnRecvData(std::string &data)=0;
 	};
 	int connect(const std::string& ip, int port);
+	void setCallback(CnnIf* pif);
+//	virtual void OnRecvMsg(CaHttpMsg &msg);
+//	virtual void OnRecvData(std::string& data);
 private:
 	HttpMsgFrame mMsgFrame;
 	edft::EdSmartSocket mSocket;

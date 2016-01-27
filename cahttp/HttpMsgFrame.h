@@ -12,6 +12,7 @@
 #include <list>
 #include <utility>
 #include <climits>
+#include <vector>
 #include "CaHttpMsg.h"
 #include "http_parser.h"
 
@@ -51,7 +52,7 @@ public:
 	HttpMsgFrame();
 	virtual ~HttpMsgFrame();
 	int init(bool server=false);
-	size_t feedPacket(vector<char> &&pkt);
+	size_t feedPacket(std::vector<char> &&pkt);
 	size_t feedPacket(const char* buf, size_t len);
 //	CaHttpMsg fetchMsg();
 	int fetchMsg(CaHttpMsg& msg);
