@@ -18,7 +18,7 @@ namespace cahttp {
 BaseConnection::BaseConnection() {
 	mBuf = nullptr;
 	mBufSize = 2048;
-	mNotiIf = nullptr;
+//	mNotiIf = nullptr;
 }
 
 BaseConnection::~BaseConnection() {
@@ -47,10 +47,10 @@ int BaseConnection::connect(const std::string& ip, int port) {
 	});
 	return 0;
 }
-
-void BaseConnection::setCallback(CnnIf* pif) {
-	mNotiIf = pif;
-}
+//
+//void BaseConnection::setCallback(CnnIf* pif) {
+//	mNotiIf = pif;
+//}
 
 //void BaseConnection::OnRecvMsg(CaHttpMsg& msg) {
 //}
@@ -69,11 +69,11 @@ int BaseConnection::procRead() {
 				if(fetch_status == mMsgFrame.FS_HDR) {
 					CaHttpMsg msg;
 					auto fetch_result = mMsgFrame.fetchMsg(msg);
-					mNotiIf->OnRecvMsg(msg);
+//					mNotiIf->OnRecvMsg(msg);
 				} else if(fetch_status == mMsgFrame.FS_DATA) {
 					string data;
 					auto fetch_result = mMsgFrame.fetchData(data);
-					mNotiIf->OnRecvData(data);
+//					mNotiIf->OnRecvData(data);
 				} else if(fetch_status == mMsgFrame.FS_NONE) {
 					break;
 				}

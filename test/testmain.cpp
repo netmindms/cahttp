@@ -38,6 +38,7 @@ int main(int argc, char* argv[]) {
 //	::testing::GTEST_FLAG(filter) = "server.manualsend";
 //	::testing::GTEST_FLAG(filter) = "server.autosend";
 //	::testing::GTEST_FLAG(filter) = "msg.tec";
+	::testing::GTEST_FLAG(filter) = "frame2.*";
 
 
 	auto ret = RUN_ALL_TESTS();

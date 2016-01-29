@@ -11,7 +11,7 @@
 
 #include "../cahttp/flog.h"
 #include "../cahttp/CaHttpFrame.h"
-
+#include "../cahttp/HttpMsgFrame2.h"
 using namespace edft;
 using namespace cahttp;
 
@@ -174,4 +174,25 @@ TEST(msg, frame) {
 	frame.feedPacket((const char*)gtec2, sizeof(gtec1));
 	fs = frame.status();
 	ali("p2: fs status=%d", fs);
+}
+
+TEST(frame2, basic) {
+	HttpMsgFrame2 frame;
+	frame.init(true);
+	string s;
+	s += "POST /index HTTP/1.1\r\n";
+	s += "Content-Length: 5\r\n";
+	s += "\r\n";
+	s += "12345";
+	auto cnt = frame.feedPacket(s.data(), s.size());
+	auto fs = frame.status();
+	ASSERT_EQ(fs, frame.FS_HDR);
+	BaseMsg msg;
+	auto fret = frame.fetchMsg(msg);
+	ASSERT_EQ(fret, frame.MSG_WITHDATA);
+	fs = frame.status();
+	ASSERT_EQ(fs, frame.FS_DATA);
+	string data;
+	fret = frame.fetchData(data);
+	ASSERT_STREQ(data.data(), "12345");
 }
