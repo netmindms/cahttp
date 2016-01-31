@@ -33,6 +33,11 @@ public:
 		mMsgType = type;
 	}
 	void setUrl(const char* ptr, size_t len);
+
+	std::string& getUrl() {
+		return mUrlStr;
+	}
+
 	void addHdr(const std::string& name, const std::string &val);
 	void setMethod(http_method method) {
 		mMethod = method;

@@ -53,6 +53,7 @@ void BaseMsg::clear() {
 	mContentLen = 0;
 	mProtocolVer.clear();
 	mParserFlag = 0;
+	mRespStatusCode = 0;
 }
 
 std::string BaseMsg::serialize() {

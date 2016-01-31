@@ -26,7 +26,7 @@ BaseConnection::~BaseConnection() {
 }
 
 
-int BaseConnection::connect(const std::string& ip, int port) {
+int BaseConnection::connect(uint32_t ip, int port) {
 	if(!mBuf) {
 		mBuf = new char[mBufSize];
 		assert(mBuf);
@@ -45,8 +45,17 @@ int BaseConnection::connect(const std::string& ip, int port) {
 
 		}
 	});
-	return 0;
+	return mSocket.connect(ip, port);
 }
+
+int BaseConnection::send(const char* buf, size_t len) {
+	if(mSocket.isWritable()) {
+		return mSocket.sendPacket(buf, len);
+	} else {
+		return -1;
+	}
+}
+
 //
 //void BaseConnection::setCallback(CnnIf* pif) {
 //	mNotiIf = pif;
@@ -86,6 +95,18 @@ int BaseConnection::procRead() {
 		alw("*** no read data");
 	}
 	return 0;
+}
+
+
+uint32_t BaseConnection::startSend(CnnIf* pif) {
+	if(!mNotiIf) {
+		mNotiIf = pif;
+		return 1; // TODO:
+	} else {
+		ale("### Error: connection callback if exists");
+		assert(0);
+		return 0;
+	}
 }
 
 } /* namespace cahttp */

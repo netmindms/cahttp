@@ -85,15 +85,15 @@ private:
 	int64_t mContentLen;
 	int64_t mReadLen;
 	uint8_t mReadStatus;
-	int32_t mMsgSeqNum;
+	uint32_t mMsgSeqNum;
 
 private:
 	struct MsgSeq {
-		int32_t seq;
+		uint32_t seq;
 		std::unique_ptr<BaseMsg> msg;
 	};
 	struct DataSeq {
-		int32_t seq;
+		uint32_t seq;
 		std::string data;
 	};
 

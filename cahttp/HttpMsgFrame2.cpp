@@ -50,13 +50,19 @@ int HttpMsgFrame2::fetchMsg(BaseMsg& msg) {
 	if(!mMsgList.empty()) {
 		assert(mDataList.empty() || mMsgList.front().seq <= mDataList.front().seq);
 		auto &msgseq = mMsgList.front();
+		auto mseqnum = msgseq.seq;
 		msg = move((*msgseq.msg));
+		uint32_t dseq=UINT32_MAX;
+		if(mDataList.empty()==false) {
+			dseq = mDataList.front().seq;
+		} else if(mBodyData.empty()==false) {
+			dseq = mMsgSeqNum;
+		}
 		mMsgList.pop_front();
-		if(mDataList.empty() || mDataList.front().seq > msgseq.seq) {
-			 return MSG_ONLY;
-		} else {
-			assert(mDataList.front().seq == msgseq.seq);
+		if(dseq == mseqnum) {
 			return MSG_WITHDATA;
+		} else {
+			return MSG_ONLY;
 		}
 	} else {
 		return MSG_NONE;
@@ -74,7 +80,7 @@ int HttpMsgFrame2::fetchData(string& data) {
 		return MSG_DATA;
 	} else {
 		if(!mBodyData.empty()) {
-			assert(mMsgList.empty()==false);
+			assert(mMsgList.empty()==true);
 			data = move(mBodyData);
 			mBodyData.clear();
 			return MSG_DATA;
@@ -102,8 +108,8 @@ int HttpMsgFrame2::init(bool isreq) {
 }
 
 int HttpMsgFrame2::status() const {
-	int32_t dseq=-1;
-	int32_t mseq=-1;
+	uint32_t dseq=UINT32_MAX;
+	uint32_t mseq=UINT32_MAX;
 	if(!mMsgList.empty()) {
 		mseq = mMsgList.front().seq;
 	}
@@ -114,15 +120,18 @@ int HttpMsgFrame2::status() const {
 			dseq = mMsgSeqNum;
 		}
 	}
-	if(mseq<0 && dseq<0) {
-		return FS_NONE;
-	} else {
+
+	if(mseq != UINT32_MAX) {
 		if(mseq <= dseq) {
 			return FS_HDR;
-		} else {
-			return FS_DATA;
 		}
 	}
+
+	if(dseq != UINT32_MAX) {
+		return FS_DATA;
+	}
+
+	return FS_NONE;
 }
 
 void HttpMsgFrame2::initHttpParser() {
@@ -241,6 +250,7 @@ int HttpMsgFrame2::dgHeaderComp(http_parser* parser) {
 	auto &mseq = mMsgList.back();
 	mseq.seq = mMsgSeqNum;
 	mseq.msg = move(mMsg);
+	ald("stacked msg count=%d", mMsgList.size());
 	return 0;
 }
 
@@ -258,7 +268,7 @@ int HttpMsgFrame2::dgbodyDataCb(http_parser* parser, const char* at, size_t leng
 
 int HttpMsgFrame2::dgMsgBeginCb(http_parser* parser) {
 	++mMsgSeqNum;
-	if(mMsgSeqNum<0) mMsgSeqNum = 0;
+	if(mMsgSeqNum==UINT32_MAX) mMsgSeqNum = 0;
 
 	ald("msg begin cb..., msg_seq_num=%d", mMsgSeqNum);
 	if (mIsReq) {
@@ -275,6 +285,13 @@ int HttpMsgFrame2::dgMsgBeginCb(http_parser* parser) {
 
 int HttpMsgFrame2::dgMsgEndCb(http_parser* parser) {
 	ald("msg end cb...");
+	if(mBodyData.empty() == false) {
+		mDataList.emplace_back();
+		auto &ds = mDataList.back();
+		ds.data = mBodyData; mBodyData.clear();
+		ds.seq = mMsgSeqNum;
+		ald("stacked data count=%d", mDataList.size());
+	}
 //	mPs = PS_INIT;
 	mPs = PS_END;
 	return 0;
