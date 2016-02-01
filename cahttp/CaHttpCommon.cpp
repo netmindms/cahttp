@@ -21,6 +21,29 @@
 
 using namespace std;
 
+// TODO:
+#if 0
+#define HEADER_MAP() \
+	HH(CONTENT_TYPE, Content-Type),\
+	HH(CONTENT_LEN, Content-Len), \
+	HH(ACCEPT, Accept), \
+	HH(_MAX, None), \
+
+namespace cahttp {
+#define HH(HDEF, HSTR) HDR_##HDEF
+enum HTTP_HEADER {
+	HEADER_MAP()
+};
+#undef HH
+
+#define HH(HNAME, HSTR) #HSTR
+const std::string _gHeaderStrMap[] = {
+		HEADER_MAP()
+};
+#undef HH
+}
+#endif
+
 namespace cahttp {
 
 namespace CAS {

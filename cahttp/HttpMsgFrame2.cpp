@@ -271,10 +271,8 @@ int HttpMsgFrame2::dgMsgBeginCb(http_parser* parser) {
 	if(mMsgSeqNum==UINT32_MAX) mMsgSeqNum = 0;
 
 	ald("msg begin cb..., msg_seq_num=%d", mMsgSeqNum);
-	if (mIsReq) {
-		mMsg.reset(new BaseMsg(BaseMsg::REQUEST));
-		mBodyData.clear();
-	}
+	mMsg.reset(new BaseMsg(mIsReq ? BaseMsg::REQUEST: BaseMsg::RESPONSE));
+	mBodyData.clear();
 	mPs = PS_FIRST_LINE;
 	mReadLen = 0;
 	mContentLen = 0;

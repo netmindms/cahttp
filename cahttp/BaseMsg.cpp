@@ -56,6 +56,10 @@ void BaseMsg::clear() {
 	mRespStatusCode = 0;
 }
 
+void BaseMsg::setUrl(const std::string& urlstr) {
+	mUrlStr = urlstr;
+}
+
 std::string BaseMsg::serialize() {
 	string encstr;
 	if (mMsgType == BaseMsg::REQUEST) {

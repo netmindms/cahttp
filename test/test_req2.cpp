@@ -22,11 +22,26 @@ TEST(req2, basic) {
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
-			req.request(HTTP_GET);
-		} else if(msg.msgid == EDM_CLOSE) {
+			req.setReqContent("message should be echoed.", "application/octet-stream");
+			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
+				if(event == HttpReq::ON_MSG) {
+					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
+				} else if(event == HttpReq::ON_DATA) {
 
+				} else if(event == HttpReq::ON_END) {
+					ali("request end,...");
+					auto data = req.fetchData();
+					ali("  recv data=%s", data);
+					task.postExit();
+				}
+			});
+		} else if(msg.msgid == EDM_CLOSE) {
+			req.close();
+			ali("task closed");
 		}
 		return 0;
 	});
 	task.runMain();
 }
+
+

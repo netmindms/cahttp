@@ -11,6 +11,7 @@
 #include "HttpReq.h"
 #include "CaHttpUrlParser.h"
 #include "StringPacketBuf.h"
+#include "CaHttpCommon.h"
 
 namespace cahttp {
 
@@ -20,12 +21,13 @@ HttpReq::HttpReq() :
 	mSvrPort = 80;
 	mpCnn = nullptr;
 	mCnnHandle = 0;
+	mRecvDataCnt = 0;
 }
 
 HttpReq::~HttpReq() {
 }
 
-int HttpReq::request(http_method method) {
+int HttpReq::request(http_method method, const char *pdata, size_t data_len, const char* ctype) {
 	mReqMsg.setMethod(method);
 	auto msg = mReqMsg.serialize();
 	auto& url = mReqMsg.getUrl();
@@ -52,10 +54,17 @@ int HttpReq::request(http_method method) {
 
 	if (mpCnn) {
 		mReqMsg.addHdr(CAS::HS_DATE, get_http_cur_date_str());
+		if(pdata) {
+			if(ctype) mReqMsg.addHdr(CAS::HS_CONTENT_TYPE, ctype);
+			mReqMsg.addHdr(CAS::HS_CONTENT_LEN, to_string(data_len));
+		}
 		string msgstr = mReqMsg.serialize();
+		if(pdata) {
+			msgstr.append(pdata, data_len);
+		}
 		mCnnHandle = mpCnn->startSend(&mCnnIf);
 		if (mCnnHandle) {
-			sendPacket(move(msgstr));
+			sendHttpMsg(msgstr);
 			return 0;
 		} else {
 			ale("### Error:fail to get handle of connection");
@@ -107,7 +116,14 @@ int HttpReq::sendPacket(string&& s) {
 	}
 }
 
+int HttpReq::request_get(const std::string& url, Lis lis) {
+	mLis = lis;
+	mReqMsg.setUrl(url);
+	return request(HTTP_GET);
+}
+
 void HttpReq::procWritable() {
+	ald("proc writable, buf list cnt=%d", mBufList.size());
 	for (; mBufList.empty() == false;) {
 		auto buf = mBufList.front()->getBuf();
 		if (buf.first > 0) {
@@ -123,6 +139,95 @@ void HttpReq::procWritable() {
 			mBufList.pop_front();
 			break;
 		}
+	}
+}
+
+void HttpReq::ReqCnnIf::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
+	mpReq->procOnMsg(move(upmsg));
+}
+
+int HttpReq::getRespStatus() {
+	if(mupRespMsg) {
+		return mupRespMsg->getRespStatus();
+	} else {
+		ale("### Error: no response message");
+		assert(0);
+		return 0;
+	}
+}
+
+int64_t HttpReq::getRespContentLen() {
+	return mupRespMsg->getContentLenInt();
+}
+
+void HttpReq::procOnMsg(std::unique_ptr<BaseMsg> upmsg) {
+	mupRespMsg = move(upmsg);
+	assert(mLis);
+	mLis(ON_MSG);
+	if(mupRespMsg->getContentLenInt()==0) {
+		mLis(ON_END);
+	}
+}
+
+void HttpReq::ReqCnnIf::OnData(std::string&& data) {
+	mpReq->procOnData(data);
+}
+
+void HttpReq::ReqCnnIf::OnCnn(int cnnstatus) {
+}
+
+void HttpReq::close() {
+	if(mPropCnn) {
+		mPropCnn->close();
+		mPropCnn.reset();
+	}
+}
+
+void HttpReq::setReqContent(const std::string& data, const std::string& content_type) {
+	mReqMsg.addHdr(CAS::HS_CONTENT_TYPE, content_type);
+	mReqMsg.addHdr(CAS::HS_CONTENT_LEN, to_string(data.size()));
+	StringPacketBuf *pbuf = new StringPacketBuf;
+	pbuf->setString(data.data(), data.size());
+	mBufList.emplace_back(pbuf);
+}
+
+int HttpReq::request_post(const std::string& url, Lis lis) {
+	mLis = lis;
+	mReqMsg.setUrl(url);
+	return request(HTTP_POST);
+}
+
+int HttpReq::sendHttpMsg(std::string& msg) {
+	auto ret = mpCnn->send(msg.data(), msg.size());
+	if (ret > 0) {
+		// send fail
+		auto *pkt = new StringPacketBuf;
+		pkt->setString(move(msg));
+		mBufList.emplace_front(pkt);
+		return -1;
+	} else {
+		return ret;
+	}
+}
+
+std::string HttpReq::fetchData() {
+	return move(mRecvDataBuf);
+}
+
+void HttpReq::setReqContentFile(const std::string& path, const std::string& content_type) {
+
+}
+
+void HttpReq::procOnData(std::string& data) {
+	mRecvDataCnt += data.size();
+	if(mRecvDataBuf.empty()==true) {
+		mRecvDataBuf = move(data);
+	} else {
+		mRecvDataBuf.append(data);
+	}
+	mLis(ON_DATA);
+	if(mRecvDataCnt == mupRespMsg->getContentLenInt()) {
+		mLis(ON_END);
 	}
 }
 

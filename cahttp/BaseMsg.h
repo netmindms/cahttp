@@ -33,6 +33,7 @@ public:
 		mMsgType = type;
 	}
 	void setUrl(const char* ptr, size_t len);
+	void setUrl(const std::string &urlstr);
 
 	std::string& getUrl() {
 		return mUrlStr;
