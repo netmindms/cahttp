@@ -7,18 +7,29 @@
 
 #define LOG_LEVEL LOG_DEBUG
 
+#include <memory>
+#include "BaseMsg.h"
 #include "BaseConnection.h"
 #include "flog.h"
 
+#include "util.h"
+
 using namespace edft;
 using namespace std;
+
+#define FP_CNN 0
+
+#define FSET_CNN() BIT_SET(mStatusFlag, FP_CNN)
+#define FSET_DISCNN() BIT_RESET(mStatusFlag, FP_CNN)
+#define FGET_CNN() BIT_TEST(mStatusFlag, FP_CNN)
 
 namespace cahttp {
 
 BaseConnection::BaseConnection() {
 	mBuf = nullptr;
 	mBufSize = 2048;
-//	mNotiIf = nullptr;
+	mNotiIf = nullptr;
+	mStatusFlag = 0;
 }
 
 BaseConnection::~BaseConnection() {
@@ -36,24 +47,37 @@ int BaseConnection::connect(uint32_t ip, int port) {
 
 	mSocket.setOnListener([this](EdSmartSocket& sck, int event) {
 		if(event == NETEV_CONNECTED) {
-
+			FSET_CNN();
+			mNotiIf->OnWritable();
 		} else if(event == NETEV_DISCONNECTED) {
-
+			FSET_DISCNN();
 		} else if(event == NETEV_READABLE) {
 			procRead();
 		} else if(event == NETEV_WRITABLE) {
-
+			mNotiIf->OnWritable();
 		}
 	});
 	return mSocket.connect(ip, port);
 }
 
 int BaseConnection::send(const char* buf, size_t len) {
+	if(FGET_CNN()==0) {
+		ali("*** not connected");
+		return 1;
+	}
 	if(mSocket.isWritable()) {
 		return mSocket.sendPacket(buf, len);
 	} else {
-		return -1;
+		ali("*** not writable");
+		return 1;
 	}
+}
+
+void BaseConnection::endSend(uint32_t handle) {
+}
+
+void BaseConnection::close() {
+	mSocket.close();
 }
 
 //
@@ -76,13 +100,13 @@ int BaseConnection::procRead() {
 			for(;;) {
 				auto fetch_status = mMsgFrame.status();
 				if(fetch_status == mMsgFrame.FS_HDR) {
-					CaHttpMsg msg;
-					auto fetch_result = mMsgFrame.fetchMsg(msg);
-//					mNotiIf->OnRecvMsg(msg);
+					unique_ptr<BaseMsg> upmsg( new BaseMsg );
+					auto fetch_result = mMsgFrame.fetchMsg(*upmsg);
+					mNotiIf->OnMsg(move(upmsg));
 				} else if(fetch_status == mMsgFrame.FS_DATA) {
 					string data;
 					auto fetch_result = mMsgFrame.fetchData(data);
-//					mNotiIf->OnRecvData(data);
+					mNotiIf->OnData(move(data));
 				} else if(fetch_status == mMsgFrame.FS_NONE) {
 					break;
 				}

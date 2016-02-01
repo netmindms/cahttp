@@ -11,8 +11,7 @@
 #include <string>
 #include <ednio/EdNio.h>
 
-#include "CaHttpMsg.h"
-#include "HttpMsgFrame.h"
+#include "HttpMsgFrame2.h"
 
 namespace cahttp {
 
@@ -23,22 +22,28 @@ public:
 		CnnIf(){};
 		virtual ~CnnIf(){};
 		virtual void OnWritable()=0;
+		virtual void OnMsg(std::unique_ptr<BaseMsg> upmsg)=0;
+		virtual void OnData(std::string&& data)=0;
+		virtual void OnCnn(int cnnstatus)=0;
 	};
-	typedef std::function<void (CaHttpMsg&, int)> MsgLis;
+	typedef std::function<void (BaseMsg&, int)> MsgLis;
 	BaseConnection();
 	virtual ~BaseConnection();
 	int connect(uint32_t ip, int port);
 	uint32_t startSend(CnnIf* pif);
+	void endSend(uint32_t handle);
 	int send(const char* buf, size_t len);
+	void close();
 //	void setCallback(CnnIf* pif);
 //	virtual void OnRecvMsg(CaHttpMsg &msg);
 //	virtual void OnRecvData(std::string& data);
 private:
-	HttpMsgFrame mMsgFrame;
+	HttpMsgFrame2 mMsgFrame;
 	edft::EdSmartSocket mSocket;
 	CnnIf *mNotiIf;
 	size_t mBufSize;
 	char* mBuf;
+	uint8_t mStatusFlag;
 
 	int procRead();
 };

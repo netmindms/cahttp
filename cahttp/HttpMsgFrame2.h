@@ -52,7 +52,7 @@ public:
 	HttpMsgFrame2();
 	virtual ~HttpMsgFrame2();
 	int init(bool isreq);
-	size_t feedPacket(vector<char> &&pkt);
+	size_t feedPacket(std::vector<char> &&pkt);
 	size_t feedPacket(const char* buf, size_t len);
 //	CaHttpMsg fetchMsg();
 	int fetchMsg(BaseMsg& msg);
