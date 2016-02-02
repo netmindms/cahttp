@@ -37,6 +37,8 @@ public:
 	int getRespStatus();
 	int64_t getRespContentLen();
 	void setReqContent(const std::string& data, const std::string& content_type);
+	void setReqContentFile(const std::string& path, const std::string& content_type);
+	std::string fetchData();
 	void close();
 private:
 	class ReqCnnIf: public BaseConnection::CnnIf {

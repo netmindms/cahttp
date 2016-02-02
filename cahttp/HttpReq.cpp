@@ -210,6 +210,14 @@ int HttpReq::sendHttpMsg(std::string& msg) {
 	}
 }
 
+std::string HttpReq::fetchData() {
+	return move(mRecvDataBuf);
+}
+
+void HttpReq::setReqContentFile(const std::string& path, const std::string& content_type) {
+
+}
+
 void HttpReq::procOnData(std::string& data) {
 	mRecvDataCnt += data.size();
 	if(mRecvDataBuf.empty()==true) {

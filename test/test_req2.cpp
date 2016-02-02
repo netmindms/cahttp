@@ -30,6 +30,8 @@ TEST(req2, basic) {
 
 				} else if(event == HttpReq::ON_END) {
 					ali("request end,...");
+					auto data = req.fetchData();
+					ali("  recv data=%s", data);
 					task.postExit();
 				}
 			});
@@ -41,3 +43,5 @@ TEST(req2, basic) {
 	});
 	task.runMain();
 }
+
+
