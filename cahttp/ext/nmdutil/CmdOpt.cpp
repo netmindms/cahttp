@@ -5,7 +5,7 @@
  *      Author: netmind
  */
 
-#include "../nmdutil/CmdOpt.h"
+#include "CmdOpt.h"
 
 namespace nmdu {
 

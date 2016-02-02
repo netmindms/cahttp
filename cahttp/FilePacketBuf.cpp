@@ -6,7 +6,7 @@
  */
 
 #include "FilePacketBuf.h"
-#include "nmdutil/FileUtil.h"
+#include "ext/nmdutil/FileUtil.h"
 #define BUF_SIZE 4096
 
 using namespace nmdu;
@@ -18,6 +18,7 @@ FilePacketBuf::FilePacketBuf() {
 	mBuf = nullptr;
 	mBufSize = 0;
 	mDataCnt = 0;
+	mFileSize = 0;
 }
 
 FilePacketBuf::~FilePacketBuf() {
@@ -46,7 +47,7 @@ std::pair<size_t, const char*> FilePacketBuf::getBuf() {
 	}
 }
 
-int FilePacketBuf::open(std::string& path) {
+int FilePacketBuf::open(const std::string& path) {
 	mFileSize = FileUtil::getSize(path.data());
 	mSt = fopen(path.data(), "rb");
 	if(mSt) {

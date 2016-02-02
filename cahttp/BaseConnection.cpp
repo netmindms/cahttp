@@ -10,9 +10,8 @@
 #include <memory>
 #include "BaseMsg.h"
 #include "BaseConnection.h"
+#include "ext/nmdutil/etcutil.h"
 #include "flog.h"
-
-#include "util.h"
 
 using namespace edft;
 using namespace std;
@@ -50,6 +49,7 @@ int BaseConnection::connect(uint32_t ip, int port) {
 			FSET_CNN();
 			mNotiIf->OnWritable();
 		} else if(event == NETEV_DISCONNECTED) {
+			ali("*** disconnected...");
 			FSET_DISCNN();
 		} else if(event == NETEV_READABLE) {
 			procRead();
@@ -62,11 +62,14 @@ int BaseConnection::connect(uint32_t ip, int port) {
 
 int BaseConnection::send(const char* buf, size_t len) {
 	if(FGET_CNN()==0) {
-		ali("*** not connected");
+		ali("*** not yet connected");
 		return 1;
 	}
 	if(mSocket.isWritable()) {
-		return mSocket.sendPacket(buf, len);
+		auto wret = mSocket.sendPacket(buf, len);
+		if(wret==SEND_OK) return 0;
+		else if(wret == SEND_PENDING) return -1;
+		else return 1;
 	} else {
 		ali("*** not writable");
 		return 1;
@@ -80,16 +83,9 @@ void BaseConnection::close() {
 	mSocket.close();
 }
 
-//
-//void BaseConnection::setCallback(CnnIf* pif) {
-//	mNotiIf = pif;
-//}
-
-//void BaseConnection::OnRecvMsg(CaHttpMsg& msg) {
-//}
-//
-//void BaseConnection::OnRecvData(string& data) {
-//}
+void BaseConnection::reserveWrite() {
+	mSocket.reserveWrite();
+}
 
 int BaseConnection::procRead() {
 	auto rcnt = mSocket.recvPacket(mBuf, mBufSize);

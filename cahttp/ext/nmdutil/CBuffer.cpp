@@ -6,14 +6,14 @@
  */
 
 
-#include "../nmdutil/CBuffer.h"
 
 #include <string.h>
 #include <cassert>
 #include <cstdlib>
 #include <memory>
 
-#include "../nmdutil/nmdtype.h"
+#include "CBuffer.h"
+#include "nmdtype.h"
 namespace nmdu {
 
 CBuffer::CBuffer() {

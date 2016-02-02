@@ -10,7 +10,7 @@
 #include <sys/utsname.h>
 
 #include "../cahttp/FilePacketBuf.h"
-#include "../cahttp/nmdutil/FileUtil.h"
+#include "../cahttp/ext/nmdutil/FileUtil.h"
 
 using namespace std;
 using namespace cahttp;

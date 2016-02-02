@@ -10,12 +10,10 @@
 namespace cahttp {
 
 PacketBuf::PacketBuf() {
-	// TODO Auto-generated constructor stub
-
+	mType = 0;
 }
 
 PacketBuf::~PacketBuf() {
-	// TODO Auto-generated destructor stub
 }
 
 } /* namespace cahttp */

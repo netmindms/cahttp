@@ -37,8 +37,10 @@ public:
 	int getRespStatus();
 	int64_t getRespContentLen();
 	void setReqContent(const std::string& data, const std::string& content_type);
-	void setReqContentFile(const std::string& path, const std::string& content_type);
+	int setReqContentFile(const std::string& path, const std::string& content_type);
 	std::string fetchData();
+	void transferEncoding(bool te);
+	void endData();
 	void close();
 private:
 	class ReqCnnIf: public BaseConnection::CnnIf {
@@ -61,15 +63,19 @@ private:
 	uint32_t mCnnHandle;
 	int64_t mRecvDataCnt;
 	std::string mRecvDataBuf;
+	int64_t mReqContentLen;
+	uint8_t mStatusFlag;
 
 	ReqCnnIf mCnnIf;
 	std::list<std::unique_ptr<PacketBuf>> mBufList;
 	Lis mLis;
 
-	int sendHttpMsg(std::string& msg);
+	int sendHttpMsg(std::string&& msg);
 	void procWritable();
 	void procOnMsg(std::unique_ptr<BaseMsg> upmsg);
 	void procOnData(std::string &data);
+	void procOnCnn(int status);
+	void stackTeByteBuf(const char* ptr, size_t len, bool head, bool body, bool tail);
 };
 
 } /* namespace cahttp */

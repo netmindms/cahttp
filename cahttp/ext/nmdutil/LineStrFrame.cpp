@@ -5,12 +5,12 @@
  *      Author: netmind
  */
 
-#include "../nmdutil/LineStrFrame.h"
-
 #include <iostream>
 #include <string.h>
+#include "LineStrFrame.h"
 
-#include "../nmdutil/strutil.h"
+
+#include "strutil.h"
 
 namespace nmdu {
 

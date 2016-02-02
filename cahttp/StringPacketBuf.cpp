@@ -4,7 +4,9 @@
  *  Created on: Jan 31, 2016
  *      Author: netmind
  */
+#define LOG_LEVEL LOG_DEBUG
 
+#include "flog.h"
 #include "StringPacketBuf.h"
 
 namespace cahttp {
@@ -21,6 +23,7 @@ StringPacketBuf::~StringPacketBuf() {
 }
 
 void StringPacketBuf::setString(std::string&& s) {
+//	ald("set string: %s", s);
 	mString = move(s);
 }
 
@@ -40,7 +43,11 @@ size_t StringPacketBuf::remain() {
 
 
 std::pair<size_t, const char*> StringPacketBuf::getBuf() {
-	return {mString.size(), mString.data()};
+	if (mString.size()==0) {
+		return {0, nullptr};
+	} else {
+		return {mString.size(), mString.data()};
+	}
 }
 
 } /* namespace cahttp */

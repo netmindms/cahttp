@@ -4,7 +4,7 @@
  *  Created on: Apr 13, 2015
  *      Author: netmind
  */
-#define LOG_LEVEL LOG_DEBUG
+#define LOG_LEVEL LOG_WARN
 #include <climits>
 #include "flog.h"
 #include "HttpMsgFrame2.h"
@@ -290,6 +290,12 @@ int HttpMsgFrame2::dgMsgEndCb(http_parser* parser) {
 		ds.seq = mMsgSeqNum;
 		ald("stacked data count=%d", mDataList.size());
 	}
+
+	// stack message end signal
+	mDataList.emplace_back();
+	auto &end = mDataList.back();
+	end.seq = mMsgSeqNum;
+
 //	mPs = PS_INIT;
 	mPs = PS_END;
 	return 0;

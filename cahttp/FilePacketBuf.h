@@ -22,7 +22,7 @@ public:
 	virtual void consume() override;
 	virtual std::pair<size_t, const char*> getBuf() override;
 
-	int open(std::string& path);
+	int open(const std::string& path);
 	void close();
 
 private:

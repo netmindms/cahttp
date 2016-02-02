@@ -58,6 +58,11 @@ public:
 	void setProtocolVer(const std::string& protocl_ver) {
 		mProtocolVer = protocl_ver;
 	}
+
+	void setContentType(const std::string& type);
+	void setContentLen(int64_t len);
+	void setTransferEncoding();
+
 	std::string dumpHdr();
 	void clear();
 	std::string serialize();

@@ -20,6 +20,17 @@ public:
 	virtual size_t remain()=0;
 	virtual void consume()=0;
 	virtual std::pair<size_t, const char*> getBuf()=0;
+
+	inline int getType() const {
+		return mType;
+	}
+
+	inline void setType(int type) {
+		mType = type;
+	}
+
+private:
+	int mType;
 };
 
 } /* namespace cahttp */

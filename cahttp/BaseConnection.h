@@ -33,6 +33,7 @@ public:
 	uint32_t startSend(CnnIf* pif);
 	void endSend(uint32_t handle);
 	int send(const char* buf, size_t len);
+	void reserveWrite();
 	void close();
 //	void setCallback(CnnIf* pif);
 //	virtual void OnRecvMsg(CaHttpMsg &msg);

@@ -60,6 +60,17 @@ void BaseMsg::setUrl(const std::string& urlstr) {
 	mUrlStr = urlstr;
 }
 
+void BaseMsg::setContentType(const std::string& type) {
+	addHdr(CAS::HS_CONTENT_TYPE, type);
+}
+
+void BaseMsg::setContentLen(int64_t len) {
+	mContentLen = len;
+	if(mContentLen>=0) {
+		addHdr(CAS::HS_CONTENT_LEN, to_string(len));
+	}
+}
+
 std::string BaseMsg::serialize() {
 	string encstr;
 	if (mMsgType == BaseMsg::REQUEST) {
@@ -85,6 +96,11 @@ std::string BaseMsg::serialize() {
 	encstr += "\r\n";
 
 	return move(encstr);
+}
+
+
+void BaseMsg::setTransferEncoding() {
+	addHdr(CAS::HS_TRANSFER_ENC, "chunked");
 }
 
 } /* namespace cahttp */
