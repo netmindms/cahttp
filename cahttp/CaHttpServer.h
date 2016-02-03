@@ -67,11 +67,11 @@ public:
 			pm = &(mMethodRegVec.back().second);
 			mMethodRegVec.back().first = method;
 		}
-		pair<regex, UrlCtrlAlloc> reg = { move(ex),
+		std::pair<std::regex, UrlCtrlAlloc> reg = { std::move(ex),
 			[]() -> T* {
 				return new T;
 			}};
-		pm->emplace_back(move(reg));
+		pm->emplace_back(std::move(reg));
 
 //		mUrlRegExMap.emplace_back(move(reg));
 
@@ -82,14 +82,14 @@ public:
 	};
 
 	template<class T> void setUrlRegEx(http_method method, const std::string &rstr) {
-		setUrlRegEx<T>(method, regex(rstr));
+		setUrlRegEx<T>(method, std::regex(rstr));
 	};
 #endif
 
 	int start(int task_num);
 	void close();
 	const UrlMap* getUrlMap(http_method method);
-	UrlCtrlAlloc matchRegExUrl(http_method method, smatch &result, const std::string& s);
+	UrlCtrlAlloc matchRegExUrl(http_method method, std::smatch &result, const std::string& s);
 	void config(const char* param, const char *val);
 	void setOnListener(Lis lis);
 	void closeAllConnections();

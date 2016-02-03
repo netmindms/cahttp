@@ -9,13 +9,14 @@
 #include <sys/utsname.h>
 #include <list>
 #include <ednio/EdNio.h>
+#include "../cahttp/flog.h"
 using namespace std;
 void serverlive();
 
 
 int main(int argc, char* argv[]) {
  	edft::EdNioInit();
-//	serverlive();
+ 	NMDU_SET_LOG_LEVEL(LOG_DEBUG);
 	::testing::InitGoogleTest(&argc, argv);
 //	::testing::GTEST_FLAG(filter) = "strm.*";
 //	::testing::GTEST_FLAG(filter) = "request.*";
@@ -43,7 +44,8 @@ int main(int argc, char* argv[]) {
 //	::testing::GTEST_FLAG(filter) = "pktbuf.*";
 //	::testing::GTEST_FLAG(filter) = "req2.*";
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc";
-	::testing::GTEST_FLAG(filter) = "req2.transfer_enc_file";
+//	::testing::GTEST_FLAG(filter) = "req2.transfer_enc_file";
+	::testing::GTEST_FLAG(filter) = "req2.manualdata";
 
 
 	auto ret = RUN_ALL_TESTS();

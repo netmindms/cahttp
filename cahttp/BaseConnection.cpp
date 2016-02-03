@@ -32,7 +32,9 @@ BaseConnection::BaseConnection() {
 }
 
 BaseConnection::~BaseConnection() {
-	// TODO Auto-generated destructor stub
+	if(mBuf) {
+		delete[] mBuf;
+	}
 }
 
 
@@ -51,6 +53,7 @@ int BaseConnection::connect(uint32_t ip, int port) {
 		} else if(event == NETEV_DISCONNECTED) {
 			ali("*** disconnected...");
 			FSET_DISCNN();
+			mNotiIf->OnCnn(0);
 		} else if(event == NETEV_READABLE) {
 			procRead();
 		} else if(event == NETEV_WRITABLE) {
@@ -62,7 +65,7 @@ int BaseConnection::connect(uint32_t ip, int port) {
 
 int BaseConnection::send(const char* buf, size_t len) {
 	if(FGET_CNN()==0) {
-		ali("*** not yet connected");
+		ald("*** not yet connected");
 		return 1;
 	}
 	if(mSocket.isWritable()) {
@@ -71,7 +74,7 @@ int BaseConnection::send(const char* buf, size_t len) {
 		else if(wret == SEND_PENDING) return -1;
 		else return 1;
 	} else {
-		ali("*** not writable");
+		ald("*** not writable");
 		return 1;
 	}
 }
@@ -112,7 +115,7 @@ int BaseConnection::procRead() {
 			return -2;
 		}
 	} else {
-		alw("*** no read data");
+		//ali("*** no read data");
 	}
 	return 0;
 }

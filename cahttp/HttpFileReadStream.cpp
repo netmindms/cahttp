@@ -9,6 +9,9 @@
 
 #include "flog.h"
 #include "HttpFileReadStream.h"
+
+using namespace std;
+
 namespace cahttp {
 HttpFileReadStream::HttpFileReadStream() {
 	mReadCnt = 0;

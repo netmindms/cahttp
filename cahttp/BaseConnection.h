@@ -35,6 +35,9 @@ public:
 	int send(const char* buf, size_t len);
 	void reserveWrite();
 	void close();
+	inline bool isWritable() {
+		return mSocket.isWritable();
+	}
 //	void setCallback(CnnIf* pif);
 //	virtual void OnRecvMsg(CaHttpMsg &msg);
 //	virtual void OnRecvData(std::string& data);

@@ -13,6 +13,8 @@
 #include "http_parser.h"
 #include "HttpStringReadStream.h"
 
+using namespace std;
+
 namespace cahttp {
 
 #define CLEN_MASK 1

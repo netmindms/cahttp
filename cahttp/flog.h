@@ -8,6 +8,9 @@
 #ifndef SRC_ALOG_H_
 #define SRC_ALOG_H_
 
+#if 1
+#include "ext/nmdutil/nmdlog.h"
+#else
 #include <memory>
 #include "format.h"
 using namespace std;
@@ -64,4 +67,5 @@ const char* GetLogTimeNow();
 
 void CaHttpSetLogLevel(int l);
 }
+#endif
 #endif /* SRC_ALOG_H_ */

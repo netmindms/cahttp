@@ -12,8 +12,8 @@
 #include "../cahttp/HttpStringReadStream.h"
 #include "../cahttp/flog.h"
 #include "../cahttp/TransfEncStrm.h"
-#include "../cahttp/format.h"
-
+#include "../cahttp/ext/nmdutil/nmdu_format.h"
+using namespace std;
 using namespace cahttp;
 
 TEST(strm, 0) {
@@ -45,7 +45,7 @@ TEST(strm, transf_enc) {
 	ss.store(s.data(), s.size());
 	testrm.setStream(&ss);
 	auto dp = testrm.getDataPtr();
-	string expstr = fmt::format("{:x}\r\n", s.size());
+	string expstr = nmdu::fmt::format("{:x}\r\n", s.size());
 	expstr += (s+"\r\n");
 	string enc(dp.first, dp.second);
 	ASSERT_STREQ(enc.data(), expstr.data());

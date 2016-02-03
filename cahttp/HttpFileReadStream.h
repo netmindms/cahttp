@@ -36,6 +36,6 @@ private:
 	size_t mChunkReadPos;
 };
 
-typedef unique_ptr<HttpFileReadStream> upHttpFileReadStream;
+typedef std::unique_ptr<HttpFileReadStream> upHttpFileReadStream;
 }
 #endif /* SRC_HTTPFILEREADSTREAM_H_ */

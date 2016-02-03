@@ -5,10 +5,14 @@
  *      Author: netmind
  */
 
+#define LOG_LEVEL LOG_WARN
+
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
 #include "BytePacketBuf.h"
+#include "flog.h"
+
 namespace cahttp {
 
 BytePacketBuf::BytePacketBuf() {
@@ -19,7 +23,7 @@ BytePacketBuf::BytePacketBuf() {
 
 BytePacketBuf::~BytePacketBuf() {
 	if(mBuf) {
-		free(mBuf); mBuf = nullptr;
+		free(mBuf);
 	}
 }
 
@@ -62,6 +66,10 @@ void BytePacketBuf::setData(const char* ptr, size_t len) {
 void BytePacketBuf::addData(const char* ptr, size_t len) {
 	if(mDataSize+len <= mBufSize) {
 		memcpy(mBuf+mDataSize, ptr, len);
+		mDataSize += len;
+	} else {
+		ale("### Error: buffer not enough, bufsize=%ld, current=%ld, add=%ld", mBufSize, mDataSize, len);
+		assert(0);
 	}
 }
 

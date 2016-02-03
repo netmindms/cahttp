@@ -11,6 +11,9 @@
 #include "flog.h"
 #include "CaHttpServer.h"
 #include "HttpServCnnCtx.h"
+
+using namespace std;
+
 namespace cahttp {
 #define CHECK_CALLER_TASK() (assert(mLisSock.getTask()==EdTask::getCurrentTask()))
 

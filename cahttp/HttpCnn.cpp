@@ -10,6 +10,9 @@
 #include "CaHttpCommon.h"
 #include "HttpCnn.h"
 #include "CaHttpUrlParser.h"
+
+using namespace std;
+
 namespace cahttp {
 HttpCnn::HttpCnn() {
 	ald("default constructor...");

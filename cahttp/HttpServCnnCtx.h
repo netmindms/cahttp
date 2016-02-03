@@ -29,7 +29,7 @@ private:
 	void freeCnn(uint32_t handle);
 	void disconnectedCnn(ServCnn* pcnn);
 	const UrlMap* getUrlMap(http_method method);
-	CaHttpUrlCtrl* findAndAlloc(http_method method, const string& urlstr);
+	CaHttpUrlCtrl* findAndAlloc(http_method method, const std::string& urlstr);
 
 	uint32_t mHandleSeed;
 	std::unordered_map<uint32_t, ServCnn> mCnnList;

@@ -9,6 +9,9 @@
 #include "flog.h"
 #include "HttpServCnnCtx.h"
 #include "CaHttpServer.h"
+
+using namespace std;
+
 namespace cahttp {
 HttpServCnnCtx::HttpServCnnCtx() {
 	mHandleSeed = 0;

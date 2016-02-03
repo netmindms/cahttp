@@ -9,6 +9,8 @@
 #include "flog.h"
 #include "HttpMsgFrame2.h"
 
+using namespace std;
+
 namespace cahttp {
 static http_parser_settings _parserSettings;
 

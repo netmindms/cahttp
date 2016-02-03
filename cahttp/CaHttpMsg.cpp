@@ -10,6 +10,9 @@
 #include "flog.h"
 #include "CaHttpCommon.h"
 #include "CaHttpMsg.h"
+
+using namespace std;
+
 namespace cahttp {
 CaHttpMsg::CaHttpMsg() {
 	mMsgStatus = 0;

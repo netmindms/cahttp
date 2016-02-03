@@ -11,6 +11,7 @@
 #include <ednio/EdNio.h>
 #include "../cahttp/HttpReq.h"
 #include "../cahttp/flog.h"
+#include "../cahttp/CaHttpCommon.h"
 #include "testutil.h"
 
 using namespace cahttp;
@@ -151,6 +152,7 @@ TEST(req2, transfer_enc) {
 TEST(req2, transfer_enc_file) {
 	EdTask task;
 	HttpReq req;
+	int status_code=0;
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
@@ -161,7 +163,7 @@ TEST(req2, transfer_enc_file) {
 				} else if(event == HttpReq::ON_DATA) {
 
 				} else if(event == HttpReq::ON_END) {
-					ASSERT_EQ(req.getRespStatus(), 200);
+					status_code = req.getRespStatus();
 					task.postExit();
 				}
 			});
@@ -173,4 +175,73 @@ TEST(req2, transfer_enc_file) {
 		return 0;
 	});
 	task.runMain();
+	ASSERT_EQ(status_code, 200);
+}
+
+
+TEST(req2, manualdata) {
+	EdTask task;
+	HttpReq req;
+	FILE* mSt;
+	char fbuf[4*1024];
+	size_t dataSize;
+	size_t readFileCnt=0;
+
+	int status_code=0;
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			dataSize = 0;
+			mSt = fopen(get_test_file_path().data(), "rb");
+			assert(mSt);
+			req.addReqHdr(CAS::HS_CONTENT_TYPE, CAS::CT_APP_OCTET);
+			req.transferEncoding(true);
+			req.request_post("http://localhost:3000/upload", [&](HttpReq::Event event) {
+				if(event == HttpReq::ON_MSG) {
+				} else if(event == HttpReq::ON_DATA) {
+
+				} else if(event == HttpReq::ON_SEND) {
+					ald("on send, ");
+					for(;;) {
+						if(dataSize==0) {
+							auto rcnt = fread(fbuf, 1, 4*1024, mSt);
+							if(rcnt>0) {
+								readFileCnt += rcnt;
+								dataSize = rcnt;
+							} else {
+								ali("*** no file read data");
+							}
+						}
+						if(dataSize>0) {
+							if(dataSize != 4096) {
+								ali("*** last data=%ld", dataSize);
+							}
+							auto sret = req.sendData(fbuf, dataSize);
+							if(sret<=0) {
+								dataSize = 0;
+								if(sret<0) break;
+							} else {
+								ale("send paused...");
+								break;
+							}
+						} else {
+							req.endData();
+							break;
+						}
+					}
+				} else if(event == HttpReq::ON_END) {
+					status_code = req.getRespStatus();
+					task.postExit();
+				}
+			});
+		} else if(msg.msgid == EDM_CLOSE) {
+			fclose(mSt);
+			req.close();
+			ali("task closed");
+		}
+		return 0;
+	});
+	task.runMain();
+	ali("fread cnt=%ld", readFileCnt);
+	ASSERT_EQ(status_code, 200);
 }

@@ -17,6 +17,9 @@
 #include "CaHttpServer.h"
 #include "HttpServCnnCtx.h"
 #include "CaHttp404UrlCtrl.h"
+
+using namespace std;
+
 namespace cahttp {
 enum {
 	LM_DISCONNECT=(EDM_USER+100),

@@ -26,7 +26,7 @@ FilePacketBuf::~FilePacketBuf() {
 }
 
 size_t FilePacketBuf::remain() {
-	return (ftell(mSt) - mFileSize + mDataCnt);
+	return (mFileSize - ftell(mSt) + mDataCnt);
 }
 
 void FilePacketBuf::consume() {
@@ -64,6 +64,10 @@ int FilePacketBuf::open(const std::string& path) {
 void FilePacketBuf::close() {
 	if(mSt) {
 		fclose(mSt); mSt = nullptr;
+	}
+
+	if(mBuf) {
+		delete[] mBuf; mBuf = nullptr;
 	}
 }
 

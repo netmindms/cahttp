@@ -14,6 +14,7 @@
 #include "../cahttp/HttpMsgFrame2.h"
 using namespace edft;
 using namespace cahttp;
+using namespace std;
 
 #if 0
 HTTP/1.1 200 OK

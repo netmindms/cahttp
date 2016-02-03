@@ -11,6 +11,7 @@
 #include "flog.h"
 #include "CaHttpBaseMsg.h"
 #include "CaHttpCommon.h"
+using namespace std;
 
 namespace cahttp {
 static string _NULL_HDR;

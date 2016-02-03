@@ -24,6 +24,7 @@ public:
 	enum Event {
 		ON_MSG,
 		ON_DATA,
+		ON_SEND,
 		ON_END,
 	};
 	typedef std::function<void (Event)> Lis;
@@ -32,12 +33,16 @@ public:
 	int request_get(const std::string& url, Lis lis);
 	int request_post(const std::string& url, Lis lis);
 	int request(http_method method, const char *pdata=nullptr, size_t data_len=0, const char* ctype=nullptr);
+	int sendData(const char* ptr, size_t len);
 	int sendPacket(const char* buf, size_t len);
 	int sendPacket(std::string&& s);
 	int getRespStatus();
 	int64_t getRespContentLen();
 	void setReqContent(const std::string& data, const std::string& content_type);
 	int setReqContentFile(const std::string& path, const std::string& content_type);
+	inline void addReqHdr(const std::string& name, const std::string& val) {
+		mReqMsg.addHdr(name, val);
+	}
 	std::string fetchData();
 	void transferEncoding(bool te);
 	void endData();
@@ -53,7 +58,6 @@ private:
 		void OnCnn(int cnnstatus) override;
 		HttpReq* mpReq;
 	};
-//	CaHttpUrlParser mUrlParser;
 	BaseMsg mReqMsg;
 	std::unique_ptr<BaseMsg> mupRespMsg;
 	BaseConnection *mpCnn;
@@ -61,6 +65,7 @@ private:
 	int mSvrPort;
 	std::unique_ptr<BaseConnection> mPropCnn;
 	uint32_t mCnnHandle;
+	int64_t mSendDataCnt;
 	int64_t mRecvDataCnt;
 	std::string mRecvDataBuf;
 	int64_t mReqContentLen;
