@@ -14,7 +14,7 @@
 
 using namespace std;
 using namespace cahttp;
-using namespace nmdu;
+using namespace cahttpu;
 
 TEST(pktbuf, file) {
 	FilePacketBuf fbuf;

@@ -13,7 +13,7 @@
 #include <arpa/inet.h>
 #include <string>
 
-namespace nmdu {
+namespace cahttpu {
 
 std::string Ip2Str(uint32_t ip);
 const char* Ip2CStr(uint32_t ip);

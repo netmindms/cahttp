@@ -128,5 +128,8 @@ void add_http_hdr(HdrList &hdrs, std::string &&name, std::vector<std::string> &&
 void set_http_hdr(HdrList &hdrs, std::string &&name, std::string &&val);
 uint32_t get_ip_from_hostname(const std::string& hostname);
 std::string get_http_cur_date_str();
+
+void set_log_level(int level);
+
 }
 #endif /* SRC_CAHTTPCOMMON_H_ */

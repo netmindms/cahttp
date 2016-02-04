@@ -171,7 +171,8 @@ void HttpCnn::procRead() {
 		// debug
 		buf[rcnt]=0;
 		ald("recv socket data:\n%s\n", buf);
-		mFrame.feedPacket(buf, rcnt);
+		auto wcnt = mFrame.feedPacket(buf, rcnt);
+		ali("feepd consumed cnt=%d", wcnt);
 		int fs;
 		for (;;) {
 			fs = mFrame.status();

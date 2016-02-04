@@ -18,6 +18,7 @@
 #include <utility>
 #include "http_parser.h"
 #include "CaHttpCommon.h"
+#include "flog.h"
 
 using namespace std;
 
@@ -277,6 +278,11 @@ string get_http_cur_date_str() {
 	time(&t);
 	get_http_date_str(ds, &t);
 	return move(ds);
+}
+
+
+void set_log_level(int level) {
+	NMDU_SET_LOG_LEVEL(level);
 }
 
 }

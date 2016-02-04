@@ -9,7 +9,7 @@
 #include "ext/nmdutil/FileUtil.h"
 #define BUF_SIZE 4096
 
-using namespace nmdu;
+using namespace cahttpu;
 
 namespace cahttp {
 

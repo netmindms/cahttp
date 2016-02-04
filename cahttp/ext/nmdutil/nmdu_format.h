@@ -171,7 +171,7 @@ inline uint32_t clzll(uint64_t x) {
     TypeName& operator=(const TypeName&)
 #endif
 
-namespace nmdu {
+namespace cahttpu {
 namespace fmt {
 
 // Fix the warning about long long on older versions of GCC
@@ -2622,7 +2622,7 @@ inline void format_decimal(char *&buffer, T value) {
 #define FMT_VARIADIC_W(ReturnType, func, ...) \
   FMT_VARIADIC_(wchar_t, ReturnType, func, return func, __VA_ARGS__)
 
-namespace nmdu {
+namespace cahttpu {
 namespace fmt {
 FMT_VARIADIC(std::string, format, StringRef)
 FMT_VARIADIC_W(std::wstring, format, WStringRef)

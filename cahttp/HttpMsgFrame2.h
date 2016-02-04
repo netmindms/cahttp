@@ -68,6 +68,7 @@ public:
 	void frameData(std::string &&data);
 	std::string pullPacket();
 	bool isEmptyPacket();
+	const char* getParserErrorDesp();
 
 private:
 	bool mIsReq;

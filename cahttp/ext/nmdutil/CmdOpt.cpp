@@ -7,7 +7,7 @@
 
 #include "CmdOpt.h"
 
-namespace nmdu {
+namespace cahttpu {
 
 static string __NULLSTR;
 

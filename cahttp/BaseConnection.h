@@ -21,10 +21,12 @@ public:
 	public:
 		CnnIf(){};
 		virtual ~CnnIf(){};
-		virtual void OnWritable()=0;
-		virtual void OnMsg(std::unique_ptr<BaseMsg> upmsg)=0;
-		virtual void OnData(std::string&& data)=0;
-		virtual void OnCnn(int cnnstatus)=0;
+
+		// if return is not 0, read loop exit
+		virtual int OnWritable()=0;
+		virtual int OnMsg(std::unique_ptr<BaseMsg> upmsg)=0;
+		virtual int OnData(std::string&& data)=0;
+		virtual int OnCnn(int cnnstatus)=0;
 	};
 	typedef std::function<void (BaseMsg&, int)> MsgLis;
 	BaseConnection();

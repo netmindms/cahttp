@@ -26,7 +26,7 @@
 
 using namespace std;
 
-namespace nmdu {
+namespace cahttpu {
 
 LogInst* _gDefLogInst=nullptr;
 

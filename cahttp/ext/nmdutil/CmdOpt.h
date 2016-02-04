@@ -15,7 +15,7 @@
 
 using namespace std;
 
-namespace nmdu {
+namespace cahttpu {
 
 typedef pair<int, vector<string> > opt_arg;
 

@@ -12,7 +12,7 @@
 #include <cstddef>
 #include <memory>
 
-namespace nmdu {
+namespace cahttpu {
 using namespace std;
 
 class CBuffer {

@@ -10,7 +10,7 @@
 
 #include <chrono>
 
-namespace nmdu {
+namespace cahttpu {
 
 #define NOW() std::chrono::system_clock::now()
 #define DURMSEC(t1, t2) std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()

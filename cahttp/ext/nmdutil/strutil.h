@@ -12,7 +12,7 @@
 #include <vector>
 #include <unordered_map>
 
-namespace nmdu {
+namespace cahttpu {
 
 extern const std::string CONST_NULLSTR;
 

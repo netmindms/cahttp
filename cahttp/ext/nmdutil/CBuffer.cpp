@@ -14,7 +14,7 @@
 
 #include "CBuffer.h"
 #include "nmdtype.h"
-namespace nmdu {
+namespace cahttpu {
 
 CBuffer::CBuffer() {
 	mBuf = nullptr;

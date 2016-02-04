@@ -27,6 +27,8 @@ class CaHttpServer {
 	friend class ServCnn;
 	friend class HttpServCnnCtx;
 public:
+	typedef std::function<void (CaHttpSvrReq& req, int)> UrlLis;
+
 	enum {
 		SVRE_NEW_CONNECTION,
 		SVRE_CLOSE_CONNECTION,
@@ -36,6 +38,7 @@ public:
 	CaHttpServer();
 	virtual ~CaHttpServer();
 	void setTaskNum(int num);
+
 
 	template<class T> void setUrl(http_method method, const std::string &url) {
 		setUrl<T>(method, std::string(url));
@@ -57,6 +60,8 @@ public:
 			return new T;
 		});
 	};
+
+	void setUrl(http_method method, const std::string &url, UrlLis lis);
 
 #ifdef CAHTTP_REGEX_URLPATTERN
 	template<class T> void setUrlRegEx(http_method method, std::regex &&ex) {

@@ -5,7 +5,7 @@
  *      Author: netmind
  */
 
-#define LOG_LEVEL LOG_DEBUG
+#define LOG_LEVEL LOG_VERBOSE
 
 #include <memory>
 #include "BaseMsg.h"
@@ -32,6 +32,8 @@ BaseConnection::BaseConnection() {
 }
 
 BaseConnection::~BaseConnection() {
+	alv("dest basecnn, ptr=%x", (long)this);
+	close();
 	if(mBuf) {
 		delete[] mBuf;
 	}
@@ -83,6 +85,7 @@ void BaseConnection::endSend(uint32_t handle) {
 }
 
 void BaseConnection::close() {
+	ali("close socket, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
 	mSocket.close();
 }
 
@@ -91,27 +94,33 @@ void BaseConnection::reserveWrite() {
 }
 
 int BaseConnection::procRead() {
+	assert(mSocket.getFd()>0);
+	alv("proc read, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
 	auto rcnt = mSocket.recvPacket(mBuf, mBufSize);
 	if(rcnt>0) {
-		auto ccnt = mMsgFrame.feedPacket(mBuf, mBufSize);
+		auto ccnt = mMsgFrame.feedPacket(mBuf, rcnt);
+		ald("consumed cnt in parser, cnt=%d", ccnt);
+		ald("packet data:\n|%s|", string(mBuf, rcnt));
 		if(ccnt) {
 			assert(ccnt == rcnt);
-			for(;;) {
+			int bexit=0;
+			for(;!bexit;) {
 				auto fetch_status = mMsgFrame.status();
 				if(fetch_status == mMsgFrame.FS_HDR) {
 					unique_ptr<BaseMsg> upmsg( new BaseMsg );
 					auto fetch_result = mMsgFrame.fetchMsg(*upmsg);
-					mNotiIf->OnMsg(move(upmsg));
+					bexit = mNotiIf->OnMsg(move(upmsg));
 				} else if(fetch_status == mMsgFrame.FS_DATA) {
 					string data;
 					auto fetch_result = mMsgFrame.fetchData(data);
-					mNotiIf->OnData(move(data));
+					bexit = mNotiIf->OnData(move(data));
 				} else if(fetch_status == mMsgFrame.FS_NONE) {
 					break;
 				}
 			}
 		} else {
-			alw("*** http msg parser error");
+			alw("*** http msg parser error: %s", mMsgFrame.getParserErrorDesp());
+			assert(0);
 			return -2;
 		}
 	} else {

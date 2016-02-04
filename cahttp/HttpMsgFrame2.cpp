@@ -4,7 +4,7 @@
  *  Created on: Apr 13, 2015
  *      Author: netmind
  */
-#define LOG_LEVEL LOG_WARN
+#define LOG_LEVEL LOG_VERBOSE
 #include <climits>
 #include "flog.h"
 #include "HttpMsgFrame2.h"
@@ -388,4 +388,9 @@ void HttpMsgFrame2::frameData(string&& data) {
 bool HttpMsgFrame2::isEmptyPacket() {
 	return mEncPkt.empty();
 }
+
+const char* HttpMsgFrame2::getParserErrorDesp() {
+	return http_errno_description(HTTP_PARSER_ERRNO(&mParser));
+}
+
 }

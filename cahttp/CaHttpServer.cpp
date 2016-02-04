@@ -185,4 +185,9 @@ UrlRegExMap* CaHttpServer::findMethodRegExMap(http_method method) {
 	return pm;
 }
 
+
+void CaHttpServer::setUrl(http_method method, const std::string& url, UrlLis lis) {
+//	setUrl<LambdaUrlCtrl>
+}
+
 } // namespace

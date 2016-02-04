@@ -12,7 +12,7 @@
 
 #include "strutil.h"
 
-namespace nmdu {
+namespace cahttpu {
 
 LineStrFrame::LineStrFrame()
 {

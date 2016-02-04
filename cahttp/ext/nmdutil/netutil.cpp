@@ -11,7 +11,7 @@
 
 using namespace std;
 
-namespace nmdu {
+namespace cahttpu {
 
 std::string Ip2Str(uint32_t ip) {
 	return std::string(Ip2CStr(ip));

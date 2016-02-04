@@ -12,7 +12,7 @@
 #include <vector>
 #include "etcutil.h"
 
-namespace nmdu {
+namespace cahttpu {
 
 #define FLB_FILE 1
 #define FLB_DIR 2

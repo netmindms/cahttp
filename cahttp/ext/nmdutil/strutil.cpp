@@ -11,7 +11,7 @@
 #include "strutil.h"
 using namespace std;
 
-namespace nmdu {
+namespace cahttpu {
 
 const string CONST_NULLSTR;
 

@@ -45,7 +45,7 @@ TEST(strm, transf_enc) {
 	ss.store(s.data(), s.size());
 	testrm.setStream(&ss);
 	auto dp = testrm.getDataPtr();
-	string expstr = nmdu::fmt::format("{:x}\r\n", s.size());
+	string expstr = cahttpu::fmt::format("{:x}\r\n", s.size());
 	expstr += (s+"\r\n");
 	string enc(dp.first, dp.second);
 	ASSERT_STREQ(enc.data(), expstr.data());

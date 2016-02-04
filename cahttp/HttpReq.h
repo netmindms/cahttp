@@ -12,6 +12,7 @@
 #include <list>
 #include <memory>
 
+#include "CaHttpCommon.h"
 #include "BaseConnection.h"
 #include "BaseMsg.h"
 #include "PacketBuf.h"
@@ -29,6 +30,7 @@ public:
 	};
 	typedef std::function<void (Event)> Lis;
 	HttpReq();
+	HttpReq(const HttpReq& that) = delete;
 	virtual ~HttpReq();
 	int request_get(const std::string& url, Lis lis);
 	int request_post(const std::string& url, Lis lis);
@@ -40,6 +42,9 @@ public:
 	int64_t getRespContentLen();
 	void setReqContent(const std::string& data, const std::string& content_type);
 	int setReqContentFile(const std::string& path, const std::string& content_type);
+	inline void setReqContentType(const std::string& content_type) {
+		mReqMsg.addHdr(cahttp::CAS::HS_CONTENT_TYPE, content_type);
+	}
 	inline void addReqHdr(const std::string& name, const std::string& val) {
 		mReqMsg.addHdr(name, val);
 	}
@@ -52,10 +57,10 @@ private:
 	friend class HttpReq;
 		ReqCnnIf(HttpReq* req);
 		virtual ~ReqCnnIf();
-		void OnWritable() override;
-		void OnMsg(std::unique_ptr<BaseMsg> upmsg) override;
-		void OnData(std::string&& data) override;
-		void OnCnn(int cnnstatus) override;
+		int OnWritable() override;
+		int OnMsg(std::unique_ptr<BaseMsg> upmsg) override;
+		int OnData(std::string&& data) override;
+		int OnCnn(int cnnstatus) override;
 		HttpReq* mpReq;
 	};
 	BaseMsg mReqMsg;
@@ -76,10 +81,10 @@ private:
 	Lis mLis;
 
 	int sendHttpMsg(std::string&& msg);
-	void procWritable();
-	void procOnMsg(std::unique_ptr<BaseMsg> upmsg);
-	void procOnData(std::string &data);
-	void procOnCnn(int status);
+	int procWritable();
+	int procOnMsg(std::unique_ptr<BaseMsg> upmsg);
+	int procOnData(std::string &data);
+	int procOnCnn(int status);
 	void stackTeByteBuf(const char* ptr, size_t len, bool head, bool body, bool tail);
 };
 

@@ -13,7 +13,7 @@
 
 using namespace std;
 
-namespace nmdu {
+namespace cahttpu {
 
 class LineStrFrame
 {

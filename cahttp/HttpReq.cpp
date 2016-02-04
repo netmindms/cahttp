@@ -5,7 +5,7 @@
  *      Author: netmind
  */
 
-#define LOG_LEVEL LOG_VERBOSE
+#define LOG_LEVEL LOG_DEBUG
 #include "flog.h"
 
 #include "HttpReq.h"
@@ -38,7 +38,7 @@ enum {
 #define FR_TE() F_RESET(FB_TE)
 
 using namespace std;
-using namespace nmdu;
+using namespace cahttpu;
 
 namespace cahttp {
 
@@ -128,8 +128,8 @@ HttpReq::ReqCnnIf::ReqCnnIf(HttpReq* req) {
 HttpReq::ReqCnnIf::~ReqCnnIf() {
 }
 
-void HttpReq::ReqCnnIf::OnWritable() {
-	mpReq->procWritable();
+int HttpReq::ReqCnnIf::OnWritable() {
+	return mpReq->procWritable();
 }
 
 int HttpReq::sendPacket(const char* buf, size_t len) {
@@ -197,7 +197,7 @@ void HttpReq::procWritable() {
 	ald("  buf list count=%d", mBufList.size());
 }
 #else
-void HttpReq::procWritable() {
+int HttpReq::procWritable() {
 	alv("proc writable, buf list cnt=%d", mBufList.size());
 	int ret;
 	for (; mBufList.empty() == false;) {
@@ -257,11 +257,12 @@ void HttpReq::procWritable() {
 	}
 END_SEND:
 	;
+	return 0;
 }
 #endif
 
-void HttpReq::ReqCnnIf::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
-	mpReq->procOnMsg(move(upmsg));
+int HttpReq::ReqCnnIf::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
+	return mpReq->procOnMsg(move(upmsg));
 }
 
 int HttpReq::getRespStatus() {
@@ -277,7 +278,7 @@ int64_t HttpReq::getRespContentLen() {
 	return mupRespMsg->getContentLenInt();
 }
 
-void HttpReq::procOnMsg(std::unique_ptr<BaseMsg> upmsg) {
+int HttpReq::procOnMsg(std::unique_ptr<BaseMsg> upmsg) {
 	mupRespMsg = move(upmsg);
 	assert(mLis);
 	mLis(ON_MSG);
@@ -291,12 +292,12 @@ void HttpReq::procOnMsg(std::unique_ptr<BaseMsg> upmsg) {
 //	}
 }
 
-void HttpReq::ReqCnnIf::OnData(std::string&& data) {
-	mpReq->procOnData(data);
+int HttpReq::ReqCnnIf::OnData(std::string&& data) {
+	return mpReq->procOnData(data);
 }
 
-void HttpReq::ReqCnnIf::OnCnn(int cnnstatus) {
-	mpReq->procOnCnn(cnnstatus);
+int HttpReq::ReqCnnIf::OnCnn(int cnnstatus) {
+	return mpReq->procOnCnn(cnnstatus);
 }
 
 void HttpReq::close() {
@@ -307,11 +308,14 @@ void HttpReq::close() {
 }
 
 void HttpReq::setReqContent(const std::string& data, const std::string& content_type) {
-	mReqMsg.setContentType(content_type);
-	StringPacketBuf *pbuf = new StringPacketBuf;
-	pbuf->setString(data.data(), data.size());
-	mBufList.emplace_back();
-	mBufList.back().reset(pbuf);
+	if(data.size()>0) {
+		mReqContentLen = data.size();
+		mReqMsg.setContentType(content_type);
+		StringPacketBuf *pbuf = new StringPacketBuf;
+		pbuf->setString(data.data(), data.size());
+		mBufList.emplace_back();
+		mBufList.back().reset(pbuf);
+	}
 }
 
 int HttpReq::setReqContentFile(const std::string& path, const std::string& content_type) {
@@ -321,7 +325,7 @@ int HttpReq::setReqContentFile(const std::string& path, const std::string& conte
 		ald("set content file, size=%lu", pbuf->remain());
 		mBufList.emplace_back();
 		mBufList.back().reset(pbuf);
-		mReqContentLen = nmdu::FileUtil::getSize(path);
+		mReqContentLen = cahttpu::FileUtil::getSize(path);
 		mReqMsg.setContentType(content_type);
 	} else {
 		delete pbuf;
@@ -361,12 +365,12 @@ std::string HttpReq::fetchData() {
 	return move(mRecvDataBuf);
 }
 
-void HttpReq::procOnData(std::string& data) {
+int HttpReq::procOnData(std::string& data) {
 	if(data.size()==0) {
 		ald("empty data, consider as message end signal,");
 		FS_FIN();
 		mLis(ON_END);
-		return;
+		return 1;
 	}
 	mRecvDataCnt += data.size();
 	if(mRecvDataBuf.empty()==true) {
@@ -375,21 +379,24 @@ void HttpReq::procOnData(std::string& data) {
 		mRecvDataBuf.append(data);
 	}
 	mLis(ON_DATA);
+	return 0;
 //	if(mRecvDataCnt == mupRespMsg->getContentLenInt()) {
 //		FS_FIN();
 //		mLis(ON_END);
 //	}
 }
 
-void HttpReq::procOnCnn(int status) {
+int HttpReq::procOnCnn(int status) {
 	if(status==0) {
 		ali("disconnected,...");
 		if(F_FIN()==0) {
 			ali("*** request terminated prematurely");
 			FS_FIN();
 			mLis(ON_END);
+			return 1;
 		}
 	}
+	return 0;
 }
 
 void HttpReq::transferEncoding(bool te) {
@@ -441,7 +448,7 @@ int HttpReq::sendData(const char* ptr, size_t len) {
 		if(F_TE()) {
 			string s;
 			s.reserve(len+20);
-			s = nmdu::fmt::format("{:x}\r\n", len);
+			s = cahttpu::fmt::format("{:x}\r\n", len);
 			s.append(ptr, len);
 			s.append("\r\n");
 			auto wret = mpCnn->send(s.data(), s.size());
