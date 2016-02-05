@@ -153,7 +153,7 @@ void CaHttpServer::notifyNewConnection(ServCnn& cnn) {
 }
 
 void CaHttpServer::closeAllConnections() {
-	ali("close all connections...")
+	ali("close all connections...");
 	assert(mLisSock.getTask()==EdTask::getCurrentTask());
 	if(mTaskNum > 0) {
 		for(auto *task: mTasks) {

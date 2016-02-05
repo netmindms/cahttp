@@ -1,5 +1,5 @@
 /*
- * alog.h
+ * nmdlog.h
  *
  *  Created on: Apr 13, 2015
  *      Author: netmind
@@ -15,7 +15,7 @@
  */
 
 
-/* Insert below lines in your app log files
+/* Insert below lines in your app log file
  * In here, gYourLogInst is an instance pointer of cahttpu::LogInst
 
 **** Sample Application log header(your_log.h) *****
@@ -37,7 +37,6 @@ MAKE_LOG_INSTANCE(your_log_instance_name);
 #include <string>
 #include <mutex>
 #include "nmdu_format.h"
-
 namespace cahttpu {
 
 #define LOG_NONE 0
@@ -102,6 +101,12 @@ extern LogInst* _gDefLogInst;
 std::string GetLogTimeNow();
 LogInst* getDefLogInst();
 
+//void NmduMemPrintf(cahttpu::fmt::MemoryWriter& w, cahttpu::fmt::StringRef sref, cahttpu::fmt::ArgList args);
+inline void NmduMemPrintf(cahttpu::fmt::MemoryWriter& w, cahttpu::fmt::StringRef sref, cahttpu::fmt::ArgList args) {
+	fmt::printf(w, sref, args);
+}
+FMT_VARIADIC(void, NmduMemPrintf, cahttpu::fmt::MemoryWriter&, cahttpu::fmt::StringRef)
+
 #define MAKE_LOG_INSTANCE(NAME) \
 cahttpu::LogInst *NAME=nullptr; \
 struct INST_TYPE_##NAME { \
@@ -119,18 +124,48 @@ struct INST_TYPE_##NAME { \
 #define LOCAL_LOG_INST DEFAULT_LOG_INST
 #endif
 
+#define C_LOG_ERROR "E"
+#define C_LOG_WARN "W"
+#define C_LOG_NOTICE "N"
+#define C_LOG_INFO "I"
+#define C_LOG_DEBUG "D"
+#define C_LOG_VERBOSE "V"
+
 #ifdef LOCAL_LOG_INST
 #define NMDU_SET_LOG_LEVEL(L) LOCAL_LOG_INST->level(L)
 #define NMDU_SET_LOG_LEVEL_FILE(L) LOCAL_LOG_INST->levelFile(L)
 #define NMDU_SET_LOG_FILE(F) LOCAL_LOG_INST->setLogFile(F)
-#define ale(FMTSTR, ...) { if(LOG_LEVEL>=LOG_ERROR) { if(LOCAL_LOG_INST->level()>=LOG_ERROR) { LOCAL_LOG_INST->lock();cahttpu::fmt::fprintf(stderr, "%s E %s:%d " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->unlock(); }; if(LOCAL_LOG_INST->levelFile()>=LOG_ERROR) {LOCAL_LOG_INST->lock(); std::string s = cahttpu::fmt::sprintf("%s [%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->writeFile(s.data(), s.size());LOCAL_LOG_INST->unlock();} } }
-#define alw(FMTSTR, ...) { if(LOG_LEVEL>=LOG_WARN) { if(LOCAL_LOG_INST->level()>=LOG_WARN) { LOCAL_LOG_INST->lock();cahttpu::fmt::fprintf(stderr, "%s W %s:%d " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->unlock(); }; if(LOCAL_LOG_INST->levelFile()>=LOG_WARN) {LOCAL_LOG_INST->lock(); std::string s = cahttpu::fmt::sprintf("%s [%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->writeFile(s.data(), s.size());LOCAL_LOG_INST->unlock();} } }
-#define aln(FMTSTR, ...) { if(LOG_LEVEL>=LOG_NOTICE) { if(LOCAL_LOG_INST->level()>=LOG_NOTICE) { LOCAL_LOG_INST->lock();cahttpu::fmt::printf("%s N %s:%d " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->unlock(); }; if(LOCAL_LOG_INST->levelFile()>=LOG_NOTICE) {LOCAL_LOG_INST->lock(); std::string s = cahttpu::fmt::sprintf("%s [%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->writeFile(s.data(), s.size());LOCAL_LOG_INST->unlock();} } }
-#define ali(FMTSTR, ...) { if(LOG_LEVEL>=LOG_INFO) { if(LOCAL_LOG_INST->level()>=LOG_INFO) { LOCAL_LOG_INST->lock();cahttpu::fmt::printf("%s I %s:%d " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->unlock(); }; if(LOCAL_LOG_INST->levelFile()>=LOG_INFO) {LOCAL_LOG_INST->lock(); std::string s = cahttpu::fmt::sprintf("%s [%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->writeFile(s.data(), s.size());LOCAL_LOG_INST->unlock();} } }
-#define ald(FMTSTR, ...) { if(LOG_LEVEL>=LOG_DEBUG) { if(LOCAL_LOG_INST->level()>=LOG_DEBUG) { LOCAL_LOG_INST->lock();cahttpu::fmt::printf("%s D %s:%d " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->unlock(); }; if(LOCAL_LOG_INST->levelFile()>=LOG_DEBUG) {LOCAL_LOG_INST->lock(); std::string s = cahttpu::fmt::sprintf("%s [%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->writeFile(s.data(), s.size());LOCAL_LOG_INST->unlock();} } }
-#define alv(FMTSTR, ...) { if(LOG_LEVEL>=LOG_VERBOSE) { if(LOCAL_LOG_INST->level()>=LOG_VERBOSE) { LOCAL_LOG_INST->lock();cahttpu::fmt::printf("%s V %s:%d " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->unlock(); }; if(LOCAL_LOG_INST->levelFile()>=LOG_VERBOSE) {LOCAL_LOG_INST->lock(); std::string s = cahttpu::fmt::sprintf("%s [%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->writeFile(s.data(), s.size());LOCAL_LOG_INST->unlock();} } }
+#if 1
+#define NMDULOGPUT(LL, OUT, FMTSTR, ...) do {\
+	if(LOG_LEVEL>=LL) {\
+		cahttpu::fmt::MemoryWriter w;\
+		LOCAL_LOG_INST->lock();\
+		if(LOCAL_LOG_INST->level()>=LL) {\
+			cahttpu::NmduMemPrintf(w, "%s [" C_ ##LL ":%s:%d] " FMTSTR "\n", \
+					cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);\
+			std::fwrite(w.data(), 1, w.size(), OUT);\
+		}\
+		if(LOCAL_LOG_INST->levelFile()>=LL) {\
+			LOCAL_LOG_INST->writeFile(w.data(), w.size());\
+		}\
+		LOCAL_LOG_INST->unlock();\
+	}\
+	}while(0)
 #endif
-
+#define ale(FMTSTR, ...) NMDULOGPUT(LOG_ERROR, stderr, FMTSTR, ## __VA_ARGS__)
+#define alw(FMTSTR, ...) NMDULOGPUT(LOG_WARN, stderr, FMTSTR, ## __VA_ARGS__)
+#define aln(FMTSTR, ...) NMDULOGPUT(LOG_NOTICE, stdout, FMTSTR, ## __VA_ARGS__)
+#define ali(FMTSTR, ...) NMDULOGPUT(LOG_INFO, stdout, FMTSTR, ## __VA_ARGS__)
+#define ald(FMTSTR, ...) NMDULOGPUT(LOG_DEBUG, stdout, FMTSTR, ## __VA_ARGS__)
+#define alv(FMTSTR, ...) NMDULOGPUT(LOG_VERBOSE, stdout, FMTSTR, ## __VA_ARGS__)
+#else
+#define ale(FMTSTR, ...) { if(LOG_LEVEL>=LOG_ERROR) { if(LOCAL_LOG_INST->level()>=LOG_ERROR) { LOCAL_LOG_INST->lock();cahttpu::fmt::fprintf(stderr, "%s [E:%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->unlock(); }; if(LOCAL_LOG_INST->levelFile()>=LOG_ERROR) {LOCAL_LOG_INST->lock(); std::string s = cahttpu::fmt::sprintf("%s [E:%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->writeFile(s.data(), s.size());LOCAL_LOG_INST->unlock();} } }
+#define alw(FMTSTR, ...) { if(LOG_LEVEL>=LOG_WARN) { if(LOCAL_LOG_INST->level()>=LOG_WARN) { LOCAL_LOG_INST->lock();cahttpu::fmt::fprintf(stderr, "%s [W:%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->unlock(); }; if(LOCAL_LOG_INST->levelFile()>=LOG_WARN) {LOCAL_LOG_INST->lock(); std::string s = cahttpu::fmt::sprintf("%s [W:%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->writeFile(s.data(), s.size());LOCAL_LOG_INST->unlock();} } }
+#define aln(FMTSTR, ...) { if(LOG_LEVEL>=LOG_NOTICE) { if(LOCAL_LOG_INST->level()>=LOG_NOTICE) { LOCAL_LOG_INST->lock();cahttpu::fmt::printf("%s [N:%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->unlock(); }; if(LOCAL_LOG_INST->levelFile()>=LOG_NOTICE) {LOCAL_LOG_INST->lock(); std::string s = cahttpu::fmt::sprintf("%s [N:%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->writeFile(s.data(), s.size());LOCAL_LOG_INST->unlock();} } }
+#define ali(FMTSTR, ...) { if(LOG_LEVEL>=LOG_INFO) { if(LOCAL_LOG_INST->level()>=LOG_INFO) { LOCAL_LOG_INST->lock();cahttpu::fmt::printf("%s [I:%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->unlock(); }; if(LOCAL_LOG_INST->levelFile()>=LOG_INFO) {LOCAL_LOG_INST->lock(); std::string s = cahttpu::fmt::sprintf("%s [I:%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->writeFile(s.data(), s.size());LOCAL_LOG_INST->unlock();} } }
+#define ald(FMTSTR, ...) { if(LOG_LEVEL>=LOG_DEBUG) { if(LOCAL_LOG_INST->level()>=LOG_DEBUG) { LOCAL_LOG_INST->lock();cahttpu::fmt::printf("%s [D:%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->unlock(); }; if(LOCAL_LOG_INST->levelFile()>=LOG_DEBUG) {LOCAL_LOG_INST->lock(); std::string s = cahttpu::fmt::sprintf("%s [D:%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->writeFile(s.data(), s.size());LOCAL_LOG_INST->unlock();} } }
+#define alv(FMTSTR, ...) { if(LOG_LEVEL>=LOG_VERBOSE) { if(LOCAL_LOG_INST->level()>=LOG_VERBOSE) { LOCAL_LOG_INST->lock();cahttpu::fmt::printf("%s [V:%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->unlock(); }; if(LOCAL_LOG_INST->levelFile()>=LOG_VERBOSE) {LOCAL_LOG_INST->lock(); std::string s = cahttpu::fmt::sprintf("%s [V:%s:%d] " FMTSTR "\n", cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);LOCAL_LOG_INST->writeFile(s.data(), s.size());LOCAL_LOG_INST->unlock();} } }
+#endif
 }
 
 #endif /* NMDLOG_H_ */

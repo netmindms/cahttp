@@ -19,7 +19,7 @@ typedef std::chrono::system_clock::time_point sctime_t;
 // flag must be unsigned
 #define BIT_SET(flag, POS) flag |= (1<<POS)
 #define BIT_RESET(flag, POS) flag &= (~(1<<POS))
-#define BIT_TEST(flag, POS)  (flag & (1<<POS) )
+#define BIT_TEST(flag, POS)  ( (flag>>POS) & 1)
 #define BIT_FRAG(flag, POS_H, POS_L)  ( ((decltype(flag))(flag<<(sizeof(flag)*8-POS_H-1))) >>(sizeof(flag)*8-(POS_H-POS_L+1)))
 
 }
