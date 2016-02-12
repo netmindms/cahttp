@@ -10,11 +10,22 @@
 #include <list>
 #include <ednio/EdNio.h>
 #include "../cahttp/flog.h"
+#include "../cahttp/RegExp.h"
 using namespace std;
 void serverlive();
 
 
 int main(int argc, char* argv[]) {
+//	cahttp::RegExp reg;
+//	const char *pa = R"(/([0-9]+)/([0-9]+))";
+//	auto r = reg.setPattern(pa);
+//	auto res = reg.matchParams("/123/456");
+//	auto &vs = res.second;
+//
+//	reg.clear();
+//	reg.setPattern(R"(/abc/123)");
+//	res = reg.matchParams("/123/23");
+//	return 0;
  	edft::EdNioInit();
  	NMDU_SET_LOG_LEVEL(LOG_DEBUG);
 	::testing::InitGoogleTest(&argc, argv);
@@ -45,7 +56,8 @@ int main(int argc, char* argv[]) {
 //	::testing::GTEST_FLAG(filter) = "req2.*";
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc";
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc_file";
-	::testing::GTEST_FLAG(filter) = "req2.manualdata";
+//	::testing::GTEST_FLAG(filter) = "req2.manualdata";
+	::testing::GTEST_FLAG(filter) = "etc.*";
 
 
 	auto ret = RUN_ALL_TESTS();
