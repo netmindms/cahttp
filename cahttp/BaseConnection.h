@@ -37,9 +37,10 @@ public:
 	typedef std::function<void (BaseMsg&, int)> MsgLis;
 	BaseConnection();
 	virtual ~BaseConnection();
-	int open(int fd);
+	int openServer(int fd);
 	virtual int connect(uint32_t ip, int port);
 	virtual uint32_t startSend(CnnIf* pif);
+	virtual void changeSend(CnnIf* pif);
 	virtual void endSend(uint32_t handle);
 	virtual int send(uint32_t handle, const char* buf, size_t len);
 	virtual void reserveWrite();

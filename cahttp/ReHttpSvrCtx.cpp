@@ -43,8 +43,8 @@ void ReHttpSvrCtx::newCnn(int fd) {
 	auto &cnnctx = mCnns[mHandleSeed];
 	cnnctx.handle = mHandleSeed;
 	cnnctx.cnnif.set(*this, cnnctx.cnn);
-	cnnctx.cnn.open(fd);
-
+	cnnctx.cnn.openServer(fd);
+	cnnctx.cnn.startSend(&cnnctx.cnnif);
 }
 
 int ReHttpSvrCtx::procOnMsg(BaseConnection& cnn, upBaseMsg upmsg) {
@@ -53,6 +53,7 @@ int ReHttpSvrCtx::procOnMsg(BaseConnection& cnn, upBaseMsg upmsg) {
 	if(parser.parse(u)) {
 		auto *pctrl = mSvr.allocUrlCtrl(upmsg->getMethod(), parser.path);
 		if(pctrl) {
+			cnn.changeSend(pctrl->getCnnIf());
 			auto *pmsg = upmsg.get();
 			pctrl->init(move(upmsg));
 			pctrl->OnMsgHdr(*pmsg);

@@ -41,7 +41,7 @@ public:
 		});
 	}
 
-#ifdef GTEST_BUILD
+#ifdef UNIT_TEST
 	static int test();
 #endif
 

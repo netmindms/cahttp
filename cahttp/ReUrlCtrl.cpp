@@ -12,7 +12,7 @@
 
 namespace cahttp {
 
-ReUrlCtrl::ReUrlCtrl() {
+ReUrlCtrl::ReUrlCtrl(): mCnnIf(this) {
 	mpReqMsg = nullptr;
 }
 
@@ -43,7 +43,20 @@ void ReUrlCtrl::init(upBaseMsg upmsg) {
 	mpReqMsg = upmsg.release();
 }
 
-
 void ReUrlCtrl::OnData(std::string&& data) {
 }
+
+
+int ReUrlCtrl::cnnif::OnWritable() {
+}
+
+int ReUrlCtrl::cnnif::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
+}
+
+int ReUrlCtrl::cnnif::OnData(std::string&& data) {
+}
+
+int ReUrlCtrl::cnnif::OnCnn(int cnnstatus) {
+}
+
 } /* namespace cahttp */

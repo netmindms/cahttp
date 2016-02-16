@@ -38,6 +38,7 @@ private:
 
 		BaseConnection *pcnn;
 		ReHttpSvrCtx* psvrctx;
+		std::list<ReUrlCtrl*> ctrls;
 	};
 
 	struct cnnctx {
@@ -55,6 +56,7 @@ private:
 	std::unordered_map<uint32_t, cnnctx> mCnns;
 	ReHttpServer mSvr;
 	std::list<upReUrlCtrl> mUrlDummy;
+	std::list<uint32_t> mCnnDummy;
 };
 
 } /* namespace cahttp */

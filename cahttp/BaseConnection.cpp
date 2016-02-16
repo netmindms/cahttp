@@ -1,5 +1,5 @@
 /*
- * BaseConnection.cpp
+G * BaseConnection.cpp
  *
  *  Created on: Jan 26, 2016
  *      Author: netmind
@@ -16,11 +16,19 @@
 using namespace edft;
 using namespace std;
 
-#define FP_CNN 0
+enum {
+	FP_CNN=0,
+	FP_SVR=7,
+};
+
 
 #define FSET_CNN() BIT_SET(mStatusFlag, FP_CNN)
 #define FSET_DISCNN() BIT_RESET(mStatusFlag, FP_CNN)
 #define FGET_CNN() BIT_TEST(mStatusFlag, FP_CNN)
+#define FSET_SVR() BIT_SET(mStatusFlag, FP_SVR)
+#define FGET_SVR() BIT_TEST(mStatusFlag, FP_SVR)
+
+
 
 namespace cahttp {
 
@@ -93,6 +101,10 @@ void BaseConnection::reserveWrite() {
 	mSocket.reserveWrite();
 }
 
+void BaseConnection::changeSend(CnnIf* pif) {
+	mNotiIf = pif;
+}
+
 int BaseConnection::procRead() {
 	assert(mSocket.getFd()>0);
 	assert(mNotiIf);
@@ -143,7 +155,9 @@ uint32_t BaseConnection::startSend(CnnIf* pif) {
 }
 
 
-int BaseConnection::open(int fd) {
+int BaseConnection::openServer(int fd) {
+	FSET_SVR();
+	mMsgFrame.init(true);
 	mSocket.openChild(fd);
 	return 0;
 }

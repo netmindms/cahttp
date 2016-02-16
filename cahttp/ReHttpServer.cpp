@@ -58,7 +58,7 @@ int ReHttpServer::setUrlReg(http_method method, const std::string& pattern, ReHt
 	return a.rexp.setPattern(pattern.data());
 }
 
-#ifdef GTEST_BUILD
+#ifdef UNIT_TEST
 int cahttp::ReHttpServer::test() {
 	class urlctrl: public ReUrlCtrl {
 	public:
