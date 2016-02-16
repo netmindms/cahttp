@@ -8,6 +8,7 @@
 #ifndef CAHTTP_BASEMSG_H_
 #define CAHTTP_BASEMSG_H_
 
+#include <memory>
 #include <string>
 #include <list>
 #include "http_parser.h"
@@ -77,6 +78,8 @@ private:
 	std::string mUrlStr;
 	std::list<std::pair<std::string, std::string>> mHdrList;
 };
+
+typedef std::unique_ptr<BaseMsg> upBaseMsg;
 
 } /* namespace cahttp */
 

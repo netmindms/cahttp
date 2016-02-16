@@ -65,7 +65,7 @@ int BaseConnection::connect(uint32_t ip, int port) {
 	return mSocket.connect(ip, port);
 }
 
-int BaseConnection::send(const char* buf, size_t len) {
+int BaseConnection::send(uint32_t handle, const char* buf, size_t len) {
 	if(FGET_CNN()==0) {
 		ald("*** not yet connected");
 		return 1;
@@ -95,6 +95,7 @@ void BaseConnection::reserveWrite() {
 
 int BaseConnection::procRead() {
 	assert(mSocket.getFd()>0);
+	assert(mNotiIf);
 	alv("proc read, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
 	auto rcnt = mSocket.recvPacket(mBuf, mBufSize);
 	if(rcnt>0) {
@@ -139,6 +140,12 @@ uint32_t BaseConnection::startSend(CnnIf* pif) {
 		assert(0);
 		return 0;
 	}
+}
+
+
+int BaseConnection::open(int fd) {
+	mSocket.openChild(fd);
+	return 0;
 }
 
 } /* namespace cahttp */

@@ -133,7 +133,7 @@ int HttpReq::ReqCnnIf::OnWritable() {
 }
 
 int HttpReq::sendPacket(const char* buf, size_t len) {
-	auto ret = mpCnn->send(buf, len);
+	auto ret = mpCnn->send(mCnnHandle, buf, len);
 	if (ret > 0) {
 		// send fail
 		auto *pkt = new StringPacketBuf;
@@ -147,7 +147,7 @@ int HttpReq::sendPacket(const char* buf, size_t len) {
 }
 
 int HttpReq::sendPacket(string&& s) {
-	auto ret = mpCnn->send(s.data(), s.size());
+	auto ret = mpCnn->send(mCnnHandle, s.data(), s.size());
 	if (ret > 0) {
 		// send fail
 		auto *pkt = new StringPacketBuf;
@@ -209,7 +209,7 @@ int HttpReq::procWritable() {
 				// writing chunk head
 				char tmp[20];
 				auto n = sprintf(tmp, "%lx\r\n", (size_t)buf.first);
-				ret = mpCnn->send(tmp, n);
+				ret = mpCnn->send(mCnnHandle, tmp, n);
 				if(ret > 0 ) {
 					alv("*** chunk length write error");
 					stackTeByteBuf(buf.second, buf.first, true, true, true);
@@ -218,11 +218,11 @@ int HttpReq::procWritable() {
 					break;
 				}
 			}
-			ret = mpCnn->send(buf.second, buf.first);
+			ret = mpCnn->send(mCnnHandle, buf.second, buf.first);
 			if (ret <= 0) {
 				if(F_TE() && pktbuf->getType()==0) {
 					// writing chunk tail
-					ret = mpCnn->send("\r\n", 2);
+					ret = mpCnn->send(mCnnHandle, "\r\n", 2);
 					if(ret>0) {
 						alv("*** fail writing chunk ending line");
 						stackTeByteBuf(nullptr, 0, false, false, true);
@@ -343,7 +343,7 @@ int HttpReq::request_post(const std::string& url, Lis lis) {
 int HttpReq::sendHttpMsg(std::string&& msg) {
 	assert(msg.size()>0);
 //	ald("sending http msg: %s", msg);
-	auto ret = mpCnn->send(msg.data(), msg.size());
+	auto ret = mpCnn->send(mCnnHandle, msg.data(), msg.size());
 	if (ret > 0) {
 		// send fail
 		auto *pkt = new StringPacketBuf;
@@ -407,7 +407,7 @@ void HttpReq::transferEncoding(bool te) {
 void HttpReq::endData() {
 	if(F_TE()) {
 		if(mBufList.empty()==true) {
-			auto ret = mpCnn->send("0\r\n\r\n", 5);
+			auto ret = mpCnn->send(mCnnHandle, "0\r\n\r\n", 5);
 			if(ret<=0) {
 				return;
 			}
@@ -451,10 +451,10 @@ int HttpReq::sendData(const char* ptr, size_t len) {
 			s = cahttpu::fmt::format("{:x}\r\n", len);
 			s.append(ptr, len);
 			s.append("\r\n");
-			auto wret = mpCnn->send(s.data(), s.size());
+			auto wret = mpCnn->send(mCnnHandle, s.data(), s.size());
 			return wret;
 		} else {
-			auto wret = mpCnn->send(ptr, len);
+			auto wret = mpCnn->send(mCnnHandle, ptr, len);
 			return wret;
 		}
 	} else {

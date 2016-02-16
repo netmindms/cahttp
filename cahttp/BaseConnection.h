@@ -17,6 +17,12 @@ namespace cahttp {
 
 class BaseConnection {
 public:
+	enum SEND_RESULT {
+		SEND_PENDING=-1,
+		SEND_OK=0,
+		SEND_FAIL=1,
+		SEND_NEXT=2,
+	};
 	class CnnIf {
 	public:
 		CnnIf(){};
@@ -31,12 +37,13 @@ public:
 	typedef std::function<void (BaseMsg&, int)> MsgLis;
 	BaseConnection();
 	virtual ~BaseConnection();
-	int connect(uint32_t ip, int port);
-	uint32_t startSend(CnnIf* pif);
-	void endSend(uint32_t handle);
-	int send(const char* buf, size_t len);
-	void reserveWrite();
-	void close();
+	int open(int fd);
+	virtual int connect(uint32_t ip, int port);
+	virtual uint32_t startSend(CnnIf* pif);
+	virtual void endSend(uint32_t handle);
+	virtual int send(uint32_t handle, const char* buf, size_t len);
+	virtual void reserveWrite();
+	virtual void close();
 	inline bool isWritable() {
 		return mSocket.isWritable();
 	}
