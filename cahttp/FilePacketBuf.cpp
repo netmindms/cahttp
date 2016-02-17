@@ -5,8 +5,11 @@
  *      Author: netmind
  */
 
+#define LOG_LEVEL LOG_DEBUG
+
 #include "FilePacketBuf.h"
 #include "ext/nmdutil/FileUtil.h"
+#include "flog.h"
 #define BUF_SIZE 4096
 
 using namespace cahttpu;
@@ -19,6 +22,7 @@ FilePacketBuf::FilePacketBuf() {
 	mBufSize = 0;
 	mDataCnt = 0;
 	mFileSize = 0;
+	mConsumeCnt = 0;
 }
 
 FilePacketBuf::~FilePacketBuf() {
@@ -30,6 +34,7 @@ size_t FilePacketBuf::remain() {
 }
 
 void FilePacketBuf::consume() {
+	mConsumeCnt += mDataCnt;
 	mDataCnt = 0;
 }
 
@@ -43,11 +48,13 @@ std::pair<size_t, const char*> FilePacketBuf::getBuf() {
 	if(mDataCnt>0) {
 		return {mDataCnt, mBuf};
 	} else {
+		ald("consume cnt=%ld, filesize=%ld", mConsumeCnt, mFileSize);
 		return {0, nullptr};
 	}
 }
 
 int FilePacketBuf::open(const std::string& path) {
+	mConsumeCnt = 0;
 	mFileSize = FileUtil::getSize(path.data());
 	mSt = fopen(path.data(), "rb");
 	if(mSt) {

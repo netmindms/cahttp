@@ -18,6 +18,7 @@ namespace cahttp {
 class ReUrlCtrl {
 	friend class ReHttpServer;
 	friend class ReHttpSvrCtx;
+	friend class ReSvrCnn;
 public:
 	ReUrlCtrl();
 	virtual ~ReUrlCtrl();
@@ -30,6 +31,8 @@ public:
 		return &mCnnIf;
 	}
 	std::vector<std::string>& getPathParams();
+	int send(const char* ptr, size_t len);
+
 private:
 	class cnnif: public BaseConnection::CnnIf {
 	public:
@@ -47,13 +50,19 @@ private:
 	};
 	cnnif mCnnIf;
 	BaseMsg* mpReqMsg;
+	BaseMsg mRespMsg;
 	std::vector<std::string> mPathParams;
+	BaseConnection* mCnn;
+	uint32_t mSendHandle;
+	int64_t mSendDataCnt;
+	uint8_t mStatusFlag;
+	int64_t mReqContentLen;
+
 	void setPathParams(std::vector<std::string>&& vs) {
 		mPathParams = move(vs);
 	}
 
-	void init(upBaseMsg upmsg);
-
+	void init(upBaseMsg upmsg, BaseConnection& cnn, uint32_t hsend);
 };
 
 typedef std::unique_ptr<ReUrlCtrl> upReUrlCtrl;

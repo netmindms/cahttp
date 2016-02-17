@@ -11,7 +11,7 @@
 
 #include <gtest/gtest.h>
 #include <ednio/EdNio.h>
-#include "../cahttp/ReHttpServer.h".h"
+#include "../cahttp/ReHttpServer.h"
 #include "../cahttp/flog.h"
 #include "../cahttp/CaHttpCommon.h"
 #include "../cahttp/ReUrlCtrl.h"
@@ -23,14 +23,29 @@ using namespace std;
 
 
 TEST(svr2, svr) {
-	ReHttpServer::test();
-//	class uctrl: public ReUrlCtrl {
-//
-//	};
+//	ReHttpServer::test();
+	class TestUrl: public ReUrlCtrl {
+		virtual void OnMsg(BaseMsg& msg) override {
 
+		};
+		virtual void OnData(std::string&& data) override {
 
-//	auto *pctrl = svr.allocUrlCtrl(HTTP_GET, "/abc");
-//	ASSERT_NE(pctrl, nullptr);
-//	delete pctrl;
+		};
+		virtual void OnEnd() override {
+
+		};
+	};
+	EdTask mTask;
+	ReHttpServer mSvr;
+	mTask.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			mSvr.setUrlReg<TestUrl>(HTTP_GET, "/test");
+			mSvr.start(0);
+		} else if(msg.msgid == EDM_CLOSE) {
+			mSvr.close();
+		}
+		return 0;
+	});
+	mTask.runMain();
 }
 

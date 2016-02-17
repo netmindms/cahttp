@@ -19,6 +19,9 @@ namespace cahttp {
 BaseMsg::BaseMsg() {
 	mMsgType = REQUEST;
 	mContentLen = 0;
+	mMethod = HTTP_GET;
+	mParserFlag = 0;
+	mRespStatusCode = 0;
 }
 
 BaseMsg::~BaseMsg() {

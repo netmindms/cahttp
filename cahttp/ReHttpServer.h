@@ -19,10 +19,12 @@
 
 namespace cahttp {
 
+class ReHttpSvrCtx;
 
 class ReHttpServer {
 	friend class svr2_svr_Test;
 	friend class ReHttpSvrCtx;
+	friend class ReSvrCnn;
 public:
 	typedef std::function<ReUrlCtrl* ()> UrlAlloctor;
 	struct reg_alloc_t {
@@ -35,19 +37,26 @@ public:
 	virtual ~ReHttpServer();
 
 	int setUrlReg(http_method method, const std::string& pattern, UrlAlloctor);
+	int setUrlRegLam(http_method method, const std::string& pattern, std::function<void()> lis);
 	template<typename T, typename ...ARG> int setUrlReg(http_method method, const std::string& pattern, ARG...args) {
 		return setUrlReg(method, pattern, [args...]() -> T* {
 			return new T(args...);
 		});
 	}
 
-#ifdef UNIT_TEST
-	static int test();
-#endif
+	int start(int tasknum);
+	void close();
 
 private:
 	std::list<std::pair<http_method, RegAllocList>> mMethodMap;
 	ReUrlCtrl* allocUrlCtrl(http_method method, const std::string& path);
+	edft::EdSocket mSocket;
+	ReHttpSvrCtx *mpLocalCtx;
+
+#ifdef UNIT_TEST
+public:
+	static int test();
+#endif
 
 };
 

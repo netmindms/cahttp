@@ -156,14 +156,16 @@ TEST(req2, transfer_enc_file) {
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
-			req.setReqContentFile(get_test_file_path(), "application/octet-stream");
+			req.setReqContentFile("/home/netmind/temp/body.data", "application/octet-stream");
 			req.transferEncoding(true);
 			req.request_post("http://localhost:3000/upload", [&](HttpReq::Event event) {
+//			req.request_post("http://192.168.5.12:3000/upload", [&](HttpReq::Event event) {
 				if(event == HttpReq::ON_MSG) {
 				} else if(event == HttpReq::ON_DATA) {
 
 				} else if(event == HttpReq::ON_END) {
 					status_code = req.getRespStatus();
+					ali("req end, satus_code=%d", status_code);
 					task.postExit();
 				}
 			});

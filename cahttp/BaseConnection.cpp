@@ -36,6 +36,7 @@ BaseConnection::BaseConnection() {
 	mBuf = nullptr;
 	mBufSize = 2048;
 	mNotiIf = nullptr;
+	mRecvIf = nullptr;
 	mStatusFlag = 0;
 }
 
@@ -80,9 +81,12 @@ int BaseConnection::send(uint32_t handle, const char* buf, size_t len) {
 	}
 	if(mSocket.isWritable()) {
 		auto wret = mSocket.sendPacket(buf, len);
-		if(wret==SEND_OK) return 0;
-		else if(wret == SEND_PENDING) return -1;
-		else return 1;
+		if(wret==edft::SEND_OK) return 0;
+		else if(wret == edft::SEND_PENDING) return -1;
+		else {
+			ald("*** send fail in writable state, ret=%d", wret);
+			return 1;
+		}
 	} else {
 		ald("*** not writable");
 		return 1;
@@ -107,13 +111,13 @@ void BaseConnection::changeSend(CnnIf* pif) {
 
 int BaseConnection::procRead() {
 	assert(mSocket.getFd()>0);
-	assert(mNotiIf);
+//	assert(mNotiIf);
 	alv("proc read, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
 	auto rcnt = mSocket.recvPacket(mBuf, mBufSize);
 	if(rcnt>0) {
 		auto ccnt = mMsgFrame.feedPacket(mBuf, rcnt);
 		ald("consumed cnt in parser, cnt=%d", ccnt);
-		ald("packet data:\n|%s|", string(mBuf, rcnt));
+		alv("packet data:\n|%s|", string(mBuf, rcnt));
 		if(ccnt) {
 			assert(ccnt == rcnt);
 			int bexit=0;
@@ -122,11 +126,11 @@ int BaseConnection::procRead() {
 				if(fetch_status == mMsgFrame.FS_HDR) {
 					unique_ptr<BaseMsg> upmsg( new BaseMsg );
 					auto fetch_result = mMsgFrame.fetchMsg(*upmsg);
-					bexit = mNotiIf->OnMsg(move(upmsg));
+					bexit = mRecvIf->OnMsg(move(upmsg));
 				} else if(fetch_status == mMsgFrame.FS_DATA) {
 					string data;
 					auto fetch_result = mMsgFrame.fetchData(data);
-					bexit = mNotiIf->OnData(move(data));
+					bexit = mRecvIf->OnData(move(data));
 				} else if(fetch_status == mMsgFrame.FS_NONE) {
 					break;
 				}
@@ -157,9 +161,34 @@ uint32_t BaseConnection::startSend(CnnIf* pif) {
 
 int BaseConnection::openServer(int fd) {
 	FSET_SVR();
-	mMsgFrame.init(true);
-	mSocket.openChild(fd);
+	init(true, fd);
 	return 0;
+}
+
+
+void BaseConnection::init(bool svr, int fd) {
+	if(!mBuf) {
+		mBuf = new char[mBufSize];
+		assert(mBuf);
+	}
+	if(svr) {
+		mMsgFrame.init(true);
+		mSocket.openChild(fd);
+	}
+	mSocket.setOnListener([this](EdSmartSocket& sck, int event) {
+		if(event == NETEV_CONNECTED) {
+			FSET_CNN();
+			if(mNotiIf) mNotiIf->OnWritable();
+		} else if(event == NETEV_DISCONNECTED) {
+			ali("*** disconnected...");
+			FSET_DISCNN();
+			if(mNotiIf) mNotiIf->OnCnn(0);
+		} else if(event == NETEV_READABLE) {
+			procRead();
+		} else if(event == NETEV_WRITABLE) {
+			if(mNotiIf) mNotiIf->OnWritable();
+		}
+	});
 }
 
 } /* namespace cahttp */

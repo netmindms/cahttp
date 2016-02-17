@@ -31,6 +31,7 @@ private:
 	size_t mDataCnt;
 	size_t mBufSize;
 	int64_t mFileSize;
+	size_t mConsumeCnt;
 };
 
 } /* namespace cahttp */

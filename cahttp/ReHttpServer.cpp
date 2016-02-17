@@ -6,19 +6,45 @@
  */
 
 #define LOG_LEVEL LOG_DEBUG
+#include "GenericUrlCtrl.h"
 
+#include "ReHttpSvrCtx.h"
 #include "ReHttpServer.h"
 #include "flog.h"
 
 namespace cahttp {
 
 ReHttpServer::ReHttpServer() {
-	// TODO Auto-generated constructor stub
-
+	mpLocalCtx = nullptr;
 }
 
 ReHttpServer::~ReHttpServer() {
-	// TODO Auto-generated destructor stub
+	close();
+}
+
+int ReHttpServer::start(int tasknum) {
+	if(tasknum==0) {
+		mpLocalCtx = new ReHttpSvrCtx;
+		mpLocalCtx->init(*this);
+	} else {
+
+	}
+
+	mSocket.setOnListener([this](edft::EdSocket& sock, int event) {
+		if(event == edft::SOCK_EVENT_INCOMING_ACCEPT) {
+			if(mpLocalCtx) {
+				auto fd = sock.accept();
+				ald("accet fd=%d", fd);
+				if(fd>0) {
+					mpLocalCtx->newCnn(fd);
+				} else {
+					ale("### accept fail");
+				}
+			}
+		}
+	});
+	auto fd=mSocket.listenSock(9000);
+	return fd>=0 ? 0: -1;
 }
 
 ReUrlCtrl* ReHttpServer::allocUrlCtrl(http_method method, const std::string& path) {
@@ -56,6 +82,18 @@ int ReHttpServer::setUrlReg(http_method method, const std::string& pattern, ReHt
 	auto &a = al->back();
 	a.alloc = alloctor;
 	return a.rexp.setPattern(pattern.data());
+}
+
+void ReHttpServer::close() {
+	mSocket.close();
+}
+
+//
+int ReHttpServer::setUrlRegLam(http_method method, const std::string& pattern, std::function<void()> lis) {
+	setUrlReg(method, pattern, [lis](){
+		return new GenericUrlCtrl;
+	});
+	return 0;
 }
 
 #ifdef UNIT_TEST

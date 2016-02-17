@@ -4,7 +4,7 @@
  *  Created on: Apr 13, 2015
  *      Author: netmind
  */
-#define LOG_LEVEL LOG_VERBOSE
+#define LOG_LEVEL LOG_DEBUG
 #include <climits>
 #include "flog.h"
 #include "HttpMsgFrame2.h"
@@ -185,13 +185,13 @@ int HttpMsgFrame2::on_status(http_parser* parser, const char* at, size_t length)
 }
 
 int HttpMsgFrame2::dgHeaderNameCb(http_parser*, const char* at, size_t length) {
-	ald("parser hdr name cb, str=%s", string(at, length));
+	alv("parser hdr name cb, str=%s", string(at, length));
 	if (mPs == PS_FIRST_LINE) {
 		procFirstLine();
 	}
 
 	if (mCurHdrVal.empty() == false) {
-		ald("header set, name=%s, val=%s", mCurHdrName, mCurHdrVal);
+		alv("header set, name=%s, val=%s", mCurHdrName, mCurHdrVal);
 		procHeader();
 	}
 
@@ -200,7 +200,7 @@ int HttpMsgFrame2::dgHeaderNameCb(http_parser*, const char* at, size_t length) {
 }
 
 int HttpMsgFrame2::dgHeaderValCb(http_parser*, const char* at, size_t length) {
-	ald("parser hdr val cb, str=%s", string(at, length));
+	alv("parser hdr val cb, str=%s", string(at, length));
 	mCurHdrVal.append(at, length);
 	return 0;
 
@@ -233,12 +233,12 @@ int HttpMsgFrame2::dgHeaderComp(http_parser* parser) {
 	if (parser->protocol_type == 'R') {
 		mMsg->setProtocolVer("RTSP/1.0");
 	}
-	ald("request header ok.");
-	ald("    resp code: %d", mMsg->getRespStatus());
-	ald("    content-len: %ld", parser->content_length);
-	ald("    chunked: %d", parser->flags & F_CHUNKED);
-	ald("    header dump: \n%s", mMsg->dumpHdr());
-	ald("header end...");
+	alv("request header ok.");
+	alv("    resp code: %d", mMsg->getRespStatus());
+	alv("    content-len: %ld", parser->content_length);
+	alv("    chunked: %d", parser->flags & F_CHUNKED);
+	alv("    header dump: \n%s", mMsg->dumpHdr());
+	alv("header end...");
 
 	mReadStatus = 0x01;
 	if (mContentLen != 0) {

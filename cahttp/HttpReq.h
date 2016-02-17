@@ -55,14 +55,24 @@ public:
 private:
 	class ReqCnnIf: public BaseConnection::CnnIf {
 	friend class HttpReq;
-		ReqCnnIf(HttpReq* req);
+		ReqCnnIf(HttpReq& req);
 		virtual ~ReqCnnIf();
 		int OnWritable() override;
-		int OnMsg(std::unique_ptr<BaseMsg> upmsg) override;
-		int OnData(std::string&& data) override;
+//		int OnMsg(std::unique_ptr<BaseMsg> upmsg) override;
+//		int OnData(std::string&& data) override;
 		int OnCnn(int cnnstatus) override;
-		HttpReq* mpReq;
+		HttpReq& mReq;
 	};
+
+	class localrecvif: public BaseConnection::RecvIf {
+		friend class HttpReq;
+		localrecvif(HttpReq& r);
+		virtual ~localrecvif();
+		virtual int OnMsg(std::unique_ptr<BaseMsg> upmsg) override;
+		virtual int OnData(std::string&& data) override;
+		HttpReq& mReq;
+	};
+
 	BaseMsg mReqMsg;
 	std::unique_ptr<BaseMsg> mupRespMsg;
 	BaseConnection *mpCnn;
@@ -77,6 +87,7 @@ private:
 	uint8_t mStatusFlag;
 
 	ReqCnnIf mCnnIf;
+	localrecvif mRecvIf;
 	std::list<std::unique_ptr<PacketBuf>> mBufList;
 	Lis mLis;
 

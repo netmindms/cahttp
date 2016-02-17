@@ -5,7 +5,7 @@
  *      Author: netmind
  */
 
-#define LOG_LEVEL LOG_DEBUG
+#define LOG_LEVEL LOG_VERBOSE
 #include "flog.h"
 
 #include "HttpReq.h"
@@ -42,7 +42,7 @@ using namespace cahttpu;
 
 namespace cahttp {
 
-HttpReq::HttpReq() : mCnnIf(this) {
+HttpReq::HttpReq() : mCnnIf(*this), mRecvIf(*this) {
 	mSvrIp = 0;
 	mSvrPort = 80;
 	mpCnn = nullptr;
@@ -59,7 +59,6 @@ HttpReq::~HttpReq() {
 int HttpReq::request(http_method method, const char *pdata, size_t data_len, const char* ctype) {
 	mSendDataCnt = 0;
 	mReqMsg.setMethod(method);
-	auto msg = mReqMsg.serialize();
 	auto& url = mReqMsg.getUrl();
 	if(mpCnn==nullptr) {
 		mpCnn = new BaseConnection;
@@ -98,6 +97,7 @@ int HttpReq::request(http_method method, const char *pdata, size_t data_len, con
 			}
 		}
 		string msgstr = mReqMsg.serialize();
+		mpCnn->setRecvIf(&mRecvIf);
 		mCnnHandle = mpCnn->startSend(&mCnnIf);
 		if (mCnnHandle) {
 			if(pdata) {
@@ -121,15 +121,15 @@ int HttpReq::request(http_method method, const char *pdata, size_t data_len, con
 
 }
 
-HttpReq::ReqCnnIf::ReqCnnIf(HttpReq* req) {
-	mpReq = req;
+HttpReq::ReqCnnIf::ReqCnnIf(HttpReq& req): mReq(req) {
+
 }
 
 HttpReq::ReqCnnIf::~ReqCnnIf() {
 }
 
 int HttpReq::ReqCnnIf::OnWritable() {
-	return mpReq->procWritable();
+	return mReq.procWritable();
 }
 
 int HttpReq::sendPacket(const char* buf, size_t len) {
@@ -167,7 +167,7 @@ int HttpReq::request_get(const std::string& url, Lis lis) {
 }
 
 #if 0
-void HttpReq::procWritable() {
+int HttpReq::procWritable() {
 //	ald("proc writable, buf list cnt=%d", mBufList.size());
 	int ret;
 	for (; mBufList.empty() == false;) {
@@ -177,12 +177,12 @@ void HttpReq::procWritable() {
 		if (buf.first > 0) {
 			if(F_TE() && pktbuf->getType()==0) {
 				string sbuf;
-				sbuf = cahttp::fmt::format("{:x}\r\n", buf.first);
+				sbuf = cahttpu::fmt::format("{:x}\r\n", buf.first);
 				sbuf.append(buf.second, buf.first);
 				sbuf.append("\r\n");
-				ret = mpCnn->send(sbuf.data(), sbuf.size());
+				ret = mpCnn->send(mCnnHandle, sbuf.data(), sbuf.size());
 			} else {
-				ret = mpCnn->send(buf.second, buf.first);
+				ret = mpCnn->send(mCnnHandle, buf.second, buf.first);
 			}
 			if (ret <= 0) {
 				pktbuf->consume();
@@ -195,10 +195,11 @@ void HttpReq::procWritable() {
 		}
 	}
 	ald("  buf list count=%d", mBufList.size());
+	return 0;
 }
 #else
 int HttpReq::procWritable() {
-	alv("proc writable, buf list cnt=%d", mBufList.size());
+	ald("proc writable, buf list cnt=%d", mBufList.size());
 	int ret;
 	for (; mBufList.empty() == false;) {
 		auto *pktbuf = mBufList.front().get();
@@ -211,7 +212,7 @@ int HttpReq::procWritable() {
 				auto n = sprintf(tmp, "%lx\r\n", (size_t)buf.first);
 				ret = mpCnn->send(mCnnHandle, tmp, n);
 				if(ret > 0 ) {
-					alv("*** chunk length write error");
+					ald("*** chunk length write error");
 					stackTeByteBuf(buf.second, buf.first, true, true, true);
 					pktbuf->consume();
 					goto END_SEND;
@@ -224,7 +225,7 @@ int HttpReq::procWritable() {
 					// writing chunk tail
 					ret = mpCnn->send(mCnnHandle, "\r\n", 2);
 					if(ret>0) {
-						alv("*** fail writing chunk ending line");
+						ald("*** fail writing chunk ending line");
 						stackTeByteBuf(nullptr, 0, false, false, true);
 						pktbuf->consume();
 						goto END_SEND;
@@ -241,6 +242,7 @@ int HttpReq::procWritable() {
 				if(F_TE() && pktbuf->getType()==0) {
 					stackTeByteBuf(buf.second, buf.first, false, true, true);
 					pktbuf->consume();
+					usleep(3*1000*1000);
 					goto END_SEND;
 					break;
 				}
@@ -261,9 +263,9 @@ END_SEND:
 }
 #endif
 
-int HttpReq::ReqCnnIf::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
-	return mpReq->procOnMsg(move(upmsg));
-}
+//int HttpReq::ReqCnnIf::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
+//	return mpReq->procOnMsg(move(upmsg));
+//}
 
 int HttpReq::getRespStatus() {
 	if(mupRespMsg) {
@@ -283,6 +285,7 @@ int HttpReq::procOnMsg(std::unique_ptr<BaseMsg> upmsg) {
 	assert(mLis);
 	mLis(ON_MSG);
 
+	return 0;
 //	if(mupRespMsg->getRespStatus() >= 200) {
 //		ali("final response message, status=%d", mupRespMsg->getRespStatus());
 //		if(mupRespMsg->getContentLenInt()==0) {
@@ -292,12 +295,12 @@ int HttpReq::procOnMsg(std::unique_ptr<BaseMsg> upmsg) {
 //	}
 }
 
-int HttpReq::ReqCnnIf::OnData(std::string&& data) {
-	return mpReq->procOnData(data);
-}
+//int HttpReq::ReqCnnIf::OnData(std::string&& data) {
+//	return mpReq->procOnData(data);
+//}
 
 int HttpReq::ReqCnnIf::OnCnn(int cnnstatus) {
-	return mpReq->procOnCnn(cnnstatus);
+	return mReq.procOnCnn(cnnstatus);
 }
 
 void HttpReq::close() {
@@ -366,6 +369,7 @@ std::string HttpReq::fetchData() {
 }
 
 int HttpReq::procOnData(std::string& data) {
+	alv("proc on data, size=%ld", data.size());
 	if(data.size()==0) {
 		ald("empty data, consider as message end signal,");
 		FS_FIN();
@@ -461,5 +465,21 @@ int HttpReq::sendData(const char* ptr, size_t len) {
 		return 1;
 	}
 }
+
+HttpReq::localrecvif::localrecvif(HttpReq& r): mReq(r) {
+}
+
+HttpReq::localrecvif::~localrecvif() {
+}
+
+int HttpReq::localrecvif::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
+	return mReq.procOnMsg(move(upmsg));
+}
+
+int HttpReq::localrecvif::OnData(std::string&& data) {
+	return mReq.procOnData(data);
+}
+
+
 
 } /* namespace cahttp */

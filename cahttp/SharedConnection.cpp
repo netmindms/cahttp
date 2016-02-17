@@ -9,7 +9,7 @@
 
 namespace cahttp {
 
-SharedConnection::SharedConnection(): mCnnIf(this) {
+SharedConnection::SharedConnection() {
 	mHandleSeed = 0;
 	mhCurSend = 0;
 }
@@ -41,16 +41,6 @@ int SharedConnection::send(uint32_t handle, const char* buf, size_t len) {
 void SharedConnection::close() {
 }
 
+
+
 } /* namespace cahttp */
-
-int cahttp::SharedConnection::SharedCnnIf::OnWritable() {
-}
-
-int cahttp::SharedConnection::SharedCnnIf::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
-}
-
-int cahttp::SharedConnection::SharedCnnIf::OnData(std::string&& data) {
-}
-
-int cahttp::SharedConnection::SharedCnnIf::OnCnn(int cnnstatus) {
-}

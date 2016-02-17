@@ -10,16 +10,19 @@
 
 #include "BaseConnection.h"
 #include "ReHttpServer.h"
+#include "ReSvrCnn.h"
 #include "ReUrlCtrl.h"
 
 namespace cahttp {
 
 class ReHttpSvrCtx {
+	friend class ReHttpServer;
 public:
 	ReHttpSvrCtx();
 	virtual ~ReHttpSvrCtx();
 
 private:
+#if 0
 	class localcnnif: public BaseConnection::CnnIf {
 		friend class ReHttpSvrCtx;
 		localcnnif(){
@@ -32,13 +35,20 @@ private:
 			psvrctx=&svrctx;
 		}
 		virtual int OnWritable();
-		virtual int OnMsg(std::unique_ptr<BaseMsg> upmsg);
-		virtual int OnData(std::string&& data);
 		virtual int OnCnn(int cnnstatus);
 
 		BaseConnection *pcnn;
 		ReHttpSvrCtx* psvrctx;
 		std::list<ReUrlCtrl*> ctrls;
+	};
+	class recvif: public BaseConnection::RecvIf {
+		friend class ReHttpSvrCtx;
+		recvif(ReHttpSvrCtx& ctx, BaseConnection& cnn);
+		virtual ~recvif();
+		virtual int OnMsg(std::unique_ptr<BaseMsg> upmsg) override ;
+		virtual int OnData(std::string&& data) override;
+		ReHttpSvrCtx& mSvrCtx;
+		BaseConnection& mCnn;
 	};
 
 	struct cnnctx {
@@ -47,14 +57,15 @@ private:
 		localcnnif cnnif;
 		std::list<ReUrlCtrl*> ctrls;
 	};
-
-	void newCnn(int fd);
 	int procOnMsg(BaseConnection& cnn, upBaseMsg upmsg);
 	int procOnData(std::string&& data);
+#endif
+	void newCnn(int fd);
+	void init(ReHttpServer& svr);
 
 	uint32_t mHandleSeed;
-	std::unordered_map<uint32_t, cnnctx> mCnns;
-	ReHttpServer mSvr;
+	std::unordered_map<uint32_t, ReSvrCnn> mCnns;
+	ReHttpServer* mpSvr;
 	std::list<upReUrlCtrl> mUrlDummy;
 	std::list<uint32_t> mCnnDummy;
 };
