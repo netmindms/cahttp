@@ -5,7 +5,7 @@
  *      Author: netmind
  */
 
-#define LOG_LEVEL LOG_DEBUG
+#define LOG_LEVEL LOG_VERBOSE
 
 #include "CaHttpUrlParser.h"
 #include "ReHttpServer.h"
@@ -32,6 +32,7 @@ int ReSvrCnn::init(uint32_t handle, uint fd, ReHttpServer& svr) {
 }
 
 int ReSvrCnn::procOnMsg(upBaseMsg upmsg) {
+	alv("proc on msg");
 	BaseConnection& cnn = *mCnn;
 	auto &u = upmsg->getUrl();
 	CaHttpUrlParser parser;
@@ -40,10 +41,10 @@ int ReSvrCnn::procOnMsg(upBaseMsg upmsg) {
 		if(pctrl) {
 			auto hsend = cnn.startSend(pctrl->getCnnIf());
 			auto *pmsg = upmsg.get();
-			pctrl->init(move(upmsg), cnn, hsend);
-			pctrl->OnMsgHdr(*pmsg);
+			pctrl->init(move(upmsg), *this, hsend);
+			pctrl->OnHttpReqMsgHdr(*pmsg);
 			if(pmsg->getContentLenInt()==0) {
-				pctrl->OnEnd();
+				pctrl->OnHttpEnd();
 			}
 		}
 		return 0;
@@ -68,6 +69,20 @@ ReSvrCnn::recvif::~recvif() {
 
 int cahttp::ReSvrCnn::recvif::OnData(std::string&& data) {
 	return 0;
+}
+
+void ReSvrCnn::dummyCtrl(uint32_t handle) {
+	ali("goto dummy list, handle=%d, ctrls_cnt=%d, dummy_cnt=%d", handle, mCtrls.size(), mDummyCtrls.size());
+	assert(handle==mCtrls.front()->getHandle());
+	mDummyCtrls.splice(mDummyCtrls.end(), mCtrls, mCtrls.begin());
+	ali("  dummy list cnt=%d", mDummyCtrls.size());
+}
+
+void ReSvrCnn::clearDummy() {
+	for(auto *p: mDummyCtrls) {
+		delete p;
+	}
+	mDummyCtrls.clear();
 }
 
 } /* namespace cahttp */

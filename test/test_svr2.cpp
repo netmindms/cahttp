@@ -25,13 +25,13 @@ using namespace std;
 TEST(svr2, svr) {
 //	ReHttpServer::test();
 	class TestUrl: public ReUrlCtrl {
-		virtual void OnMsg(BaseMsg& msg) override {
+		virtual void OnHttpReqMsg(BaseMsg& msg) override {
+			response(200, nullptr, 0, nullptr);
+		};
+		virtual void OnHttpReqData(std::string&& data) override {
 
 		};
-		virtual void OnData(std::string&& data) override {
-
-		};
-		virtual void OnEnd() override {
+		virtual void OnHttpEnd() override {
 
 		};
 	};

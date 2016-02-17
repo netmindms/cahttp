@@ -18,6 +18,7 @@ class ReUrlCtrl;
 
 class ReSvrCnn {
 	friend class ReHttpSvrCtx;
+	friend class ReUrlCtrl;
 public:
 	ReSvrCnn();
 	virtual ~ReSvrCnn();
@@ -33,8 +34,14 @@ private:
 	};
 
 	int procOnMsg(upBaseMsg upmsg);
+	inline BaseConnection* getConnection() {
+		return mCnn;
+	}
+	void dummyCtrl(uint32_t handle);
+	void clearDummy();
 
 	std::list<ReUrlCtrl*> mCtrls;
+	std::list<ReUrlCtrl*> mDummyCtrls;
 	uint32_t mHandle;
 	BaseConnection* mCnn;
 	ReHttpServer* mSvr;
