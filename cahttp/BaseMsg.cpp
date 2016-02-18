@@ -76,13 +76,13 @@ void BaseMsg::setContentLen(int64_t len) {
 
 std::string BaseMsg::serialize() {
 	string encstr;
-	if (mMsgType == BaseMsg::REQUEST) {
+	if (mMsgType == MSG_TYPE_E::REQUEST) {
 		if (mProtocolVer.empty()) {
 			mProtocolVer = "HTTP/1.1";
 		}
 		encstr = string(http_method_str(mMethod)) + " " + mUrlStr + " "+mProtocolVer+"\r\n";
 		ald("request line: %s", encstr);
-	} else if (mMsgType == BaseMsg::RESPONSE) {
+	} else if (mMsgType == MSG_TYPE_E::RESPONSE) {
 		if (mProtocolVer.empty()) {
 			mProtocolVer = "HTTP/1.1";
 		}

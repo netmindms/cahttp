@@ -107,6 +107,12 @@ enum {
 	HDR__MAX,
 };
 
+enum SEND_RESULT {
+	SEND_PENDING=-1,
+	SEND_OK=0,
+	SEND_FAIL=1,
+	SEND_NEXT=2,
+};
 
 
 extern std::string gHttpMethodStr[30];

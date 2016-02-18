@@ -26,13 +26,14 @@ TEST(svr2, svr) {
 //	ReHttpServer::test();
 	class TestUrl: public ReUrlCtrl {
 		virtual void OnHttpReqMsg(BaseMsg& msg) override {
-			response(200, nullptr, 0, nullptr);
+			ali("on req message");
+			response(200, "hello", CAS::CT_TEXT_PLAIN);
 		};
 		virtual void OnHttpReqData(std::string&& data) override {
-
+			ali("on req data");
 		};
 		virtual void OnHttpEnd() override {
-
+			ali("on req end");
 		};
 	};
 	EdTask mTask;

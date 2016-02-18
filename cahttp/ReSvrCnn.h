@@ -7,6 +7,7 @@
 
 #ifndef CAHTTP_RESVRCNN_H_
 #define CAHTTP_RESVRCNN_H_
+#include <ednio/EdEventFd.h>
 #include <list>
 
 #include "BaseConnection.h"
@@ -15,6 +16,7 @@ namespace cahttp {
 
 class ReHttpServer;
 class ReUrlCtrl;
+class ReHttpSvrCtx;
 
 class ReSvrCnn {
 	friend class ReHttpSvrCtx;
@@ -22,7 +24,8 @@ class ReSvrCnn {
 public:
 	ReSvrCnn();
 	virtual ~ReSvrCnn();
-	int init(uint32_t handle, uint fd, ReHttpServer& svr);
+	int init(uint32_t handle, uint fd, ReHttpSvrCtx& svr);
+	void close();
 private:
 	class recvif: public BaseConnection::RecvIf {
 		friend class ReSvrCnn;
@@ -32,20 +35,40 @@ private:
 		virtual int OnData(std::string&& data) override;
 		ReSvrCnn& mCnn;
 	};
+	class ServCnnIf: public BaseConnection::CnnIf {
+		friend class ReSvrCnn;
+		ServCnnIf(ReSvrCnn& cnn);
+		virtual ~ServCnnIf();
+		virtual int OnWritable();
+		virtual int OnCnn(int cnnstatus);
+		ReSvrCnn& mCnn;
+	};
 
 	int procOnMsg(upBaseMsg upmsg);
+	int procOnData(std::string&& data);
+	int procOnCnn(int cnnstatus);
+	int procOnWritable();
+	SEND_RESULT send(uint32_t handle, const char* ptr, size_t len);
+
 	inline BaseConnection* getConnection() {
 		return mCnn;
 	}
 	void dummyCtrl(uint32_t handle);
 	void clearDummy();
+	void endCtrl(uint32_t handle);
 
 	std::list<ReUrlCtrl*> mCtrls;
 	std::list<ReUrlCtrl*> mDummyCtrls;
 	uint32_t mHandle;
 	BaseConnection* mCnn;
 	ReHttpServer* mSvr;
+	ReHttpSvrCtx* mCtx;
 	recvif mRecvIf;
+	ServCnnIf mCnnIf;
+	ReUrlCtrl* mpCurCtrl;
+	edft::EdEventFd mEndEvt;
+	uint32_t mCtrlHandleSeed;
+	uint32_t mSendCtrlHandle;
 };
 
 } /* namespace cahttp */

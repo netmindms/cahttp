@@ -43,6 +43,11 @@ public:
 			return new T(args...);
 		});
 	}
+//	template<typename T> int setUrlReg(http_method method, const std::string& pattern) {
+//		return setUrlReg(method, pattern, []() -> T* {
+//			return new T;
+//		});
+//	}
 
 	int start(int tasknum);
 	void close();

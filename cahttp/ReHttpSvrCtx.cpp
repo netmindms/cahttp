@@ -23,11 +23,13 @@ ReHttpSvrCtx::~ReHttpSvrCtx() {
 }
 
 
-void ReHttpSvrCtx::newCnn(int fd) {
+int ReHttpSvrCtx::newCnn(int fd) {
+	clearCnnDummy();
+	ald("new incoming cnn, fd=%d", fd);
 	if(++mHandleSeed==0) ++mHandleSeed;
 	auto &scnn = mCnns[mHandleSeed];
-	ali("new connection, handle=%d, cnn_count=%d", mHandleSeed, mCnns.size());
-	scnn.init(mHandleSeed, fd, *mpSvr);
+	ald("      handle=%d, cnn_count=%d", mHandleSeed, mCnns.size());
+	return scnn.init(mHandleSeed, fd, *this);
 }
 
 void ReHttpSvrCtx::init(ReHttpServer& svr) {
@@ -88,5 +90,17 @@ int ReHttpSvrCtx::recvif::OnData(std::string&& data) {
 }
 #endif
 
+void ReHttpSvrCtx::dummyCnn(uint32_t handle) {
+	ald("goto dummy cnn, handle=%d", handle);
+	mCnnDummy.push_back(handle);
+}
+
+void ReHttpSvrCtx::clearCnnDummy() {
+	ali("clear cnn dummy, cnt=%d", mCnnDummy.size());
+	for(auto &h: mCnnDummy) {
+		mCnns.erase(h);
+	}
+	mCnnDummy.clear();
+}
 
 } /* namespace cahttp */

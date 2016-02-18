@@ -36,7 +36,10 @@ int ReHttpServer::start(int tasknum) {
 				auto fd = sock.accept();
 				ald("accet fd=%d", fd);
 				if(fd>0) {
-					mpLocalCtx->newCnn(fd);
+					auto r = mpLocalCtx->newCnn(fd);
+					if(r) {
+						sock.close();
+					}
 				} else {
 					ale("### accept fail");
 				}
@@ -112,7 +115,7 @@ int cahttp::ReHttpServer::test() {
 		return new ReUrlCtrl;
 	});
 
-	svr.setUrlReg<urlctrl>(HTTP_GET, "/asdfasf", 10, 20);
+//	svr.setUrlReg<urlctrl>(HTTP_GET, "/asdfasf", 10, 20);
 
 	{
 		auto *pctrl = svr.allocUrlCtrl(HTTP_GET, "/asdfasf");

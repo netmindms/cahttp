@@ -17,6 +17,8 @@ namespace cahttp {
 
 class ReHttpSvrCtx {
 	friend class ReHttpServer;
+	friend class ReSvrCnn;
+
 public:
 	ReHttpSvrCtx();
 	virtual ~ReHttpSvrCtx();
@@ -60,14 +62,17 @@ private:
 	int procOnMsg(BaseConnection& cnn, upBaseMsg upmsg);
 	int procOnData(std::string&& data);
 #endif
-	void newCnn(int fd);
+	int newCnn(int fd);
 	void init(ReHttpServer& svr);
-
+	void dummyCnn(uint32_t handle);
+	void clearCnnDummy();
+	ReHttpServer* getServer() {
+		return mpSvr;
+	}
 	uint32_t mHandleSeed;
 	std::unordered_map<uint32_t, ReSvrCnn> mCnns;
-	ReHttpServer* mpSvr;
-	std::list<upReUrlCtrl> mUrlDummy;
 	std::list<uint32_t> mCnnDummy;
+	ReHttpServer* mpSvr;
 };
 
 } /* namespace cahttp */

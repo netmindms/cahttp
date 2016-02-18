@@ -20,7 +20,7 @@ public:
 	virtual ~SharedConnection();
 	virtual uint32_t startSend(CnnIf* pif) override;
 	virtual void endSend(uint32_t handle) override;
-	virtual int send(uint32_t handle, const char* buf, size_t len) override;
+	virtual cahttp::SEND_RESULT send(uint32_t handle, const char* buf, size_t len) override;
 	virtual void close();
 private:
 	std::list<std::pair<uint32_t, CnnIf*>> mSharedIfs;

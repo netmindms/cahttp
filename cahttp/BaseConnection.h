@@ -11,18 +11,14 @@
 #include <string>
 #include <ednio/EdNio.h>
 
+#include "CaHttpCommon.h"
 #include "HttpMsgFrame2.h"
 
 namespace cahttp {
 
 class BaseConnection {
 public:
-	enum SEND_RESULT {
-		SEND_PENDING=-1,
-		SEND_OK=0,
-		SEND_FAIL=1,
-		SEND_NEXT=2,
-	};
+
 	class CnnIf {
 	public:
 		CnnIf(){};
@@ -52,7 +48,7 @@ public:
 	virtual uint32_t startSend(CnnIf* pif);
 	virtual void changeSend(CnnIf* pif);
 	virtual void endSend(uint32_t handle);
-	virtual int send(uint32_t handle, const char* buf, size_t len);
+	virtual cahttp::SEND_RESULT send(uint32_t handle, const char* buf, size_t len);
 	virtual void reserveWrite();
 	virtual void close();
 	inline bool isWritable() {

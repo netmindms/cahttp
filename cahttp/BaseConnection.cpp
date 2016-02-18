@@ -74,31 +74,34 @@ int BaseConnection::connect(uint32_t ip, int port) {
 	return mSocket.connect(ip, port);
 }
 
-int BaseConnection::send(uint32_t handle, const char* buf, size_t len) {
+SEND_RESULT BaseConnection::send(uint32_t handle, const char* buf, size_t len) {
 	if(FGET_CNN()==0) {
 		ald("*** not yet connected");
-		return 1;
+		return SEND_RESULT::SEND_NEXT;
 	}
 	if(mSocket.isWritable()) {
 		auto wret = mSocket.sendPacket(buf, len);
-		if(wret==edft::SEND_OK) return 0;
-		else if(wret == edft::SEND_PENDING) return -1;
+		if(wret==edft::SEND_OK) return SEND_RESULT::SEND_OK;
+		else if(wret == edft::SEND_PENDING) return SEND_RESULT::SEND_PENDING;
 		else {
 			ald("*** send fail in writable state, ret=%d", wret);
-			return 1;
+			return SEND_RESULT::SEND_FAIL;
 		}
 	} else {
 		ald("*** not writable");
-		return 1;
+		return SEND_RESULT::SEND_NEXT;
 	}
 }
 
 void BaseConnection::endSend(uint32_t handle) {
+
 }
 
 void BaseConnection::close() {
-	ali("close socket, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
-	mSocket.close();
+	if(mSocket.getFd()>=0) {
+		ali("close socket, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
+		mSocket.close();
+	}
 }
 
 void BaseConnection::reserveWrite() {
@@ -174,6 +177,7 @@ void BaseConnection::init(bool svr, int fd) {
 	if(svr) {
 		mMsgFrame.init(true);
 		mSocket.openChild(fd);
+		FSET_CNN();
 	}
 	mSocket.setOnListener([this](EdSmartSocket& sck, int event) {
 		if(event == NETEV_CONNECTED) {

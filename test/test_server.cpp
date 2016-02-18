@@ -301,7 +301,7 @@ class ManualLongSendUrl: public CaHttpUrlCtrl {
 		char buf[1024];
 		memset(buf, 0x55, sizeof(buf));
 		auto ret = sendData(buf, sizeof(buf));
-		if (ret != SEND_FAIL) {
+		if (ret != edft::SEND_FAIL) {
 			mWriteCnt += sizeof(buf);
 			ali("write cnt=%ld", mWriteCnt);
 		}

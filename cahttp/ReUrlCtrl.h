@@ -12,6 +12,7 @@
 #include <vector>
 #include <functional>
 #include <ednio/EdEventFd.h>
+#include "CaHttpCommon.h"
 #include "BaseConnection.h"
 #include "BaseMsg.h"
 #include "PacketBuf.h"
@@ -33,51 +34,43 @@ public:
 	virtual void OnHttpSendBufReady();
 	virtual void OnHttpEnd();
 
-	BaseConnection::CnnIf* getCnnIf() {
-		return &mCnnIf;
-	}
 	std::vector<std::string>& getPathParams();
 	int send(const char* ptr, size_t len);
 	int response(int status_code, const char *pdata, size_t data_len, const char* ctype);
-
+	int response(BaseMsg& msg);
+	int response(int status_code);
+	int response(int status_code, const std::string& content, const std::string& ctype);
+	int writeContent(const char* ptr, size_t len);
 private:
-	class cnnif: public BaseConnection::CnnIf {
-	public:
-		cnnif(ReUrlCtrl* pctrl) {
-			mpCtrl = pctrl;
-		}
-		virtual ~cnnif() {
-			;
-		}
-		virtual int OnWritable();
-		virtual int OnMsg(std::unique_ptr<BaseMsg> upmsg);
-		virtual int OnData(std::string&& data);
-		virtual int OnCnn(int cnnstatus);
-		ReUrlCtrl* mpCtrl;
-	};
-
-	cnnif mCnnIf;
 	BaseMsg* mpReqMsg;
 	BaseMsg mRespMsg;
 	std::vector<std::string> mPathParams;
 	BaseConnection* mCnn;
 	ReSvrCnn* mpServCnn;
-	uint32_t mSendHandle;
+	uint32_t mHandle;
 	int64_t mSendDataCnt;
+	int64_t mRecvDataCnt;
 	uint8_t mStatusFlag;
 	int64_t mContentLen;
+	std::string mRecvDataBuf;
+
 	std::list<std::unique_ptr<PacketBuf>> mBufList;
 	edft::EdEventFd mEndEvent;
 	void setPathParams(std::vector<std::string>&& vs) {
 		mPathParams = move(vs);
 	}
 	inline uint32_t getHandle() {
-		return mSendHandle;
+		return mHandle;
 	}
 	void init(upBaseMsg upmsg, ReSvrCnn& cnn, uint32_t hsend);
 	int sendHttpMsg(std::string&& msg);
 	int procOnWritable();
+	int procOnData(std::string&& data);
 	void stackTeByteBuf(const char* ptr, size_t len, bool head, bool body, bool tail);
+	void stackSendBuf(std::string&& s);
+	void stackSendBuf(const char* ptr, size_t len);
+	void setBasicHeader(BaseMsg& msg, int status_code);
+	bool isComplete();
 };
 
 typedef std::unique_ptr<ReUrlCtrl> upReUrlCtrl;

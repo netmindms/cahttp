@@ -222,9 +222,11 @@ int HttpMsgFrame2::dgHeaderComp(http_parser* parser) {
 	}
 
 	if (mIsReq) {
+		mMsg->setMsgType(BaseMsg::REQUEST);
 		mMsg->setMethod((http_method) parser->method);
 	}
 	else {
+		mMsg->setMsgType(BaseMsg::RESPONSE);
 		mMsg->setRespStatus(parser->status_code);
 	}
 

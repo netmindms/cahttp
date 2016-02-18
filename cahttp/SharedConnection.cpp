@@ -30,7 +30,7 @@ uint32_t SharedConnection::startSend(CnnIf* pif) {
 void SharedConnection::endSend(uint32_t handle) {
 }
 
-int SharedConnection::send(uint32_t handle, const char* buf, size_t len) {
+cahttp::SEND_RESULT SharedConnection::send(uint32_t handle, const char* buf, size_t len) {
 	if(handle == mhCurSend) {
 		return BaseConnection::send(handle, buf, len);
 	} else {
