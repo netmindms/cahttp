@@ -1,3 +1,5 @@
+#include "FilePacketBuf.h"
+
 /*
  * ReUrlCtrl.cpp
  *
@@ -88,6 +90,21 @@ void ReUrlCtrl::init(upBaseMsg upmsg, ReSvrCnn& cnn, uint32_t hsend) {
 //	});
 }
 
+#if 1
+int ReUrlCtrl::response(int status_code, const char *pdata, size_t data_len, const char* ctype) {
+	BaseMsg msg;
+	setBasicHeader(msg, 200);
+	msg.setContentLen(data_len);
+	msg.setContentType(ctype);
+	response(msg);
+	if(pdata) {
+		auto r = writeContent(pdata, data_len);
+		return r;
+	}
+	return 0;
+}
+
+#else
 int ReUrlCtrl::response(int status_code, const char *pdata, size_t data_len, const char* ctype) {
 	mSendDataCnt = 0;
 	mRespMsg.setRespStatus(status_code);
@@ -122,7 +139,7 @@ int ReUrlCtrl::response(int status_code, const char *pdata, size_t data_len, con
 	return 0;
 
 }
-
+#endif
 
 int ReUrlCtrl::response(BaseMsg& msg) {
 	mSendDataCnt = 0;
@@ -292,7 +309,16 @@ int ReUrlCtrl::writeContent(const char* ptr, size_t len) {
 
 	if (mBufList.empty() == true) {
 		auto sret = mpServCnn->send(mHandle, ptr, len);
-		if (sret == SEND_RESULT::SEND_NEXT) {
+		if (sret == SEND_RESULT::SEND_OK) {
+			mSendDataCnt += len;
+			if(!F_TE() && mSendDataCnt >= mContentLen) {
+				assert(mSendDataCnt <= mContentLen);
+				FS_FIN();
+				mpServCnn->endCtrl(mHandle);
+				return 0;
+			}
+
+		} else if (sret == SEND_RESULT::SEND_NEXT) {
 			stackSendBuf(ptr, len);
 		}
 
@@ -341,6 +367,23 @@ void ReUrlCtrl::setBasicHeader(BaseMsg& msg, int status_code) {
 	msg.setMsgType(BaseMsg::MSG_TYPE_E::RESPONSE);
 	msg.setRespStatus(status_code);
 	msg.addHdr(CAS::HS_DATE, get_http_cur_date_str());
+}
+
+int ReUrlCtrl::response_file(int status_code, const char* path) {
+	BaseMsg msg;
+	setBasicHeader(msg, status_code);
+	auto *pbuf = new FilePacketBuf;
+	auto r= pbuf->open(path);
+	if(!r) {
+		msg.setContentLen(pbuf->remain());
+		msg.setContentType(CAS::CT_APP_OCTET);
+		response(msg);
+		mBufList.emplace_back(pbuf);
+		mCnn->reserveWrite();
+		return 0;
+	} else {
+		return -1;
+	}
 }
 
 bool ReUrlCtrl::isComplete() {

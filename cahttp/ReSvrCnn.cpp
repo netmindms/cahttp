@@ -33,17 +33,7 @@ int ReSvrCnn::init(uint32_t handle, uint fd, ReHttpSvrCtx& ctx) {
 	mCtx = &ctx;
 	mEndEvt.setOnListener([this](edft::EdEventFd& efd, int cnt) {
 		ald("ctrl end event, finished ctrls=%d", mDummyCtrls.size());
-		for(;mDummyCtrls.size()>0;) {
-			auto &pctrl = mDummyCtrls.front();
-			if(pctrl->isComplete()) {
-				ald("  ctrl comp, handle=%d", pctrl->getHandle());
-				pctrl->OnHttpEnd();
-				delete pctrl;
-				mDummyCtrls.pop_front();
-			} else {
-				break;
-			}
-		}
+		procDummyCtrls();
 	});
 	auto efd = mEndEvt.open();
 	alv("end event fd=%d", efd);
@@ -109,19 +99,19 @@ void ReSvrCnn::clearDummy() {
 }
 
 
-ReSvrCnn::recvif::recvif(ReSvrCnn& cnn): mCnn(cnn) {
+ReSvrCnn::ServRecvif::ServRecvif(ReSvrCnn& cnn): mCnn(cnn) {
 }
 
-ReSvrCnn::recvif::~recvif() {
+ReSvrCnn::ServRecvif::~ServRecvif() {
 }
 
-int cahttp::ReSvrCnn::recvif::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
+int cahttp::ReSvrCnn::ServRecvif::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
 	return mCnn.procOnMsg(move(upmsg));
 }
 
 
 
-int cahttp::ReSvrCnn::recvif::OnData(std::string&& data) {
+int cahttp::ReSvrCnn::ServRecvif::OnData(std::string&& data) {
 	mCnn.procOnData(move(data));
 	return 0;
 }
@@ -140,6 +130,11 @@ void ReSvrCnn::close() {
 int ReSvrCnn::procOnCnn(int cnnstatus) {
 	if(!cnnstatus) {
 		ali("serv cnn disconnected, handle=%d", mHandle);
+		if(mCtrls.size()) {
+			ali("prematurly finished ctrl cnt=%d", mCtrls.size());
+			mDummyCtrls.splice(mDummyCtrls.end(), mCtrls);
+		}
+		procDummyCtrls();
 		close();
 	}
 	return 0;
@@ -189,6 +184,16 @@ int ReSvrCnn::ServCnnIf::OnWritable() {
 
 int ReSvrCnn::ServCnnIf::OnCnn(int cnnstatus) {
 	return mCnn.procOnCnn(cnnstatus);
+}
+
+void ReSvrCnn::procDummyCtrls() {
+	for(;mDummyCtrls.size()>0;) {
+		auto &pctrl = mDummyCtrls.front();
+		ald("  ctrl comp, handle=%d", pctrl->getHandle());
+		pctrl->OnHttpEnd();
+		delete pctrl;
+		mDummyCtrls.pop_front();
+	}
 }
 
 } /* namespace cahttp */

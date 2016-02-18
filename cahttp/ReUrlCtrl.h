@@ -40,6 +40,7 @@ public:
 	int response(BaseMsg& msg);
 	int response(int status_code);
 	int response(int status_code, const std::string& content, const std::string& ctype);
+	int response_file(int status_code, const char* path);
 	int writeContent(const char* ptr, size_t len);
 private:
 	BaseMsg* mpReqMsg;

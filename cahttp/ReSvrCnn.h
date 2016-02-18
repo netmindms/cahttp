@@ -27,10 +27,10 @@ public:
 	int init(uint32_t handle, uint fd, ReHttpSvrCtx& svr);
 	void close();
 private:
-	class recvif: public BaseConnection::RecvIf {
+	class ServRecvif: public BaseConnection::RecvIf {
 		friend class ReSvrCnn;
-		recvif(ReSvrCnn& cnn);
-		virtual ~recvif();
+		ServRecvif(ReSvrCnn& cnn);
+		virtual ~ServRecvif();
 		virtual int OnMsg(std::unique_ptr<BaseMsg> upmsg) override;
 		virtual int OnData(std::string&& data) override;
 		ReSvrCnn& mCnn;
@@ -48,6 +48,9 @@ private:
 	int procOnData(std::string&& data);
 	int procOnCnn(int cnnstatus);
 	int procOnWritable();
+	void reserveWrite() {
+		mCnn->reserveWrite();
+	}
 	SEND_RESULT send(uint32_t handle, const char* ptr, size_t len);
 
 	inline BaseConnection* getConnection() {
@@ -56,6 +59,7 @@ private:
 	void dummyCtrl(uint32_t handle);
 	void clearDummy();
 	void endCtrl(uint32_t handle);
+	void procDummyCtrls();
 
 	std::list<ReUrlCtrl*> mCtrls;
 	std::list<ReUrlCtrl*> mDummyCtrls;
@@ -63,7 +67,7 @@ private:
 	BaseConnection* mCnn;
 	ReHttpServer* mSvr;
 	ReHttpSvrCtx* mCtx;
-	recvif mRecvIf;
+	ServRecvif mRecvIf;
 	ServCnnIf mCnnIf;
 	ReUrlCtrl* mpCurCtrl;
 	edft::EdEventFd mEndEvt;

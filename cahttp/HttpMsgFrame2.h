@@ -25,11 +25,6 @@ class HttpMsgFrame2
 		PS_INIT, PS_FIRST_LINE, PS_HEADER, PS_BODY, PS_MP_HEADER, PS_MP_DATA, PS_END,
 	};
 
-	enum SEND_RESULT_E
-	{
-		HTTP_SEND_FAIL = -1, HTTP_SEND_OK = 0, HTTP_SEND_PENDING,
-	};
-
 	friend class _HTTP_MSG_FRAME2_MODULE_INITIALIZER;
 public:
 	enum {
