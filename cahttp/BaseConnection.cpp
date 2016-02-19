@@ -35,9 +35,12 @@ namespace cahttp {
 BaseConnection::BaseConnection() {
 	mBuf = nullptr;
 	mBufSize = 2048;
+#if 0
 	mNotiIf = nullptr;
 	mRecvIf = nullptr;
+#endif
 	mStatusFlag = 0;
+	mHandleSeed=0;
 }
 
 BaseConnection::~BaseConnection() {
@@ -55,23 +58,30 @@ int BaseConnection::connect(uint32_t ip, int port) {
 		assert(mBuf);
 	}
 
+#if 1
+	init_sock(false, 0);
+#else
 	mMsgFrame.init(false);
-
 	mSocket.setOnListener([this](EdSmartSocket& sck, int event) {
 		if(event == NETEV_CONNECTED) {
 			FSET_CNN();
-			mNotiIf->OnWritable();
+//			mNotiIf->OnWritable();
+			procWritable();
 		} else if(event == NETEV_DISCONNECTED) {
 			ali("*** disconnected...");
 			FSET_DISCNN();
-			mNotiIf->OnCnn(0);
+//			mNotiIf->OnCnn(0);
+			procClosed();
 		} else if(event == NETEV_READABLE) {
 			procRead();
 		} else if(event == NETEV_WRITABLE) {
-			mNotiIf->OnWritable();
+//			mNotiIf->OnWritable();
+			procWritable();
 		}
 	});
+#endif
 	return mSocket.connect(ip, port);
+
 }
 
 SEND_RESULT BaseConnection::send(uint32_t handle, const char* buf, size_t len) {
@@ -93,9 +103,28 @@ SEND_RESULT BaseConnection::send(uint32_t handle, const char* buf, size_t len) {
 	}
 }
 
+#if 0
 void BaseConnection::endSend(uint32_t handle) {
 
 }
+
+void BaseConnection::changeSend(CnnIf* pif) {
+	mNotiIf = pif;
+}
+
+
+
+uint32_t BaseConnection::startSend(CnnIf* pif) {
+	if(!mNotiIf) {
+		mNotiIf = pif;
+		return 1; // TODO:
+	} else {
+		ale("### Error: connection callback if exists");
+		assert(0);
+		return 0;
+	}
+}
+#endif
 
 void BaseConnection::close() {
 	if(mSocket.getFd()>=0) {
@@ -108,9 +137,6 @@ void BaseConnection::reserveWrite() {
 	mSocket.reserveWrite();
 }
 
-void BaseConnection::changeSend(CnnIf* pif) {
-	mNotiIf = pif;
-}
 
 int BaseConnection::procRead() {
 	assert(mSocket.getFd()>0);
@@ -127,13 +153,22 @@ int BaseConnection::procRead() {
 			for(;!bexit;) {
 				auto fetch_status = mMsgFrame.status();
 				if(fetch_status == mMsgFrame.FS_HDR) {
-					unique_ptr<BaseMsg> upmsg( new BaseMsg );
-					auto fetch_result = mMsgFrame.fetchMsg(*upmsg);
-					bexit = mRecvIf->OnMsg(move(upmsg));
+					mRecvMsg.reset( new BaseMsg );
+					auto fetch_result = mMsgFrame.fetchMsg( (*mRecvMsg) );
+//					bexit = mRecvIf->OnMsg(move(mRecvMsg));
+					if(mRxChList.size()) {
+						bexit = mRxChList.front().lis(CH_MSG);
+					} else {
+						ale("### no rx ch lisener");
+						assert(0);
+					}
 				} else if(fetch_status == mMsgFrame.FS_DATA) {
-					string data;
-					auto fetch_result = mMsgFrame.fetchData(data);
-					bexit = mRecvIf->OnData(move(data));
+					mRecvData.clear();
+					auto fetch_result = mMsgFrame.fetchData(mRecvData);
+//					bexit = mRecvIf->OnData(move(data));
+					if(mRxChList.size()) {
+						bexit = mRxChList.front().lis(CH_DATA);
+					}
 				} else if(fetch_status == mMsgFrame.FS_NONE) {
 					break;
 				}
@@ -150,35 +185,25 @@ int BaseConnection::procRead() {
 }
 
 
-uint32_t BaseConnection::startSend(CnnIf* pif) {
-	if(!mNotiIf) {
-		mNotiIf = pif;
-		return 1; // TODO:
-	} else {
-		ale("### Error: connection callback if exists");
-		assert(0);
-		return 0;
-	}
-}
-
 
 int BaseConnection::openServer(int fd) {
 	FSET_SVR();
-	init(true, fd);
+	init_sock(true, fd);
 	return 0;
 }
 
 
-void BaseConnection::init(bool svr, int fd) {
+void BaseConnection::init_sock(bool svr, int fd) {
 	if(!mBuf) {
 		mBuf = new char[mBufSize];
 		assert(mBuf);
 	}
+	mMsgFrame.init(svr);
 	if(svr) {
-		mMsgFrame.init(true);
 		mSocket.openChild(fd);
 		FSET_CNN();
 	}
+#if 0
 	mSocket.setOnListener([this](EdSmartSocket& sck, int event) {
 		if(event == NETEV_CONNECTED) {
 			FSET_CNN();
@@ -193,6 +218,99 @@ void BaseConnection::init(bool svr, int fd) {
 			if(mNotiIf) mNotiIf->OnWritable();
 		}
 	});
+#endif
+	mSocket.setOnListener([this](EdSmartSocket& sck, int event) {
+			if(event == NETEV_CONNECTED) {
+				ald("sock connected");
+				FSET_CNN();
+	//			mNotiIf->OnWritable();
+				procWritable();
+			} else if(event == NETEV_DISCONNECTED) {
+				ali("*** sock disconnected...");
+				sck.close();
+				FSET_DISCNN();
+	//			mNotiIf->OnCnn(0);
+				procClosed();
+			} else if(event == NETEV_READABLE) {
+				alv("sock readble");
+				procRead();
+			} else if(event == NETEV_WRITABLE) {
+				alv("sock writable");
+	//			mNotiIf->OnWritable();
+				procWritable();
+			}
+	});
+}
+
+
+uint32_t BaseConnection::openTxCh(ChLis lis) {
+	if(++mHandleSeed==0) mHandleSeed++;
+	mTxChList.emplace_back();
+	auto &c = mTxChList.back();
+	c.handle = mHandleSeed;
+	c.lis = lis;
+	return mHandleSeed;
+}
+
+uint32_t BaseConnection::openRxCh(ChLis lis) {
+	if(++mHandleSeed==0) mHandleSeed++;
+	mRxChList.emplace_back();
+	auto &c = mRxChList.back();
+	c.handle = mHandleSeed;
+	c.lis = lis;
+	return mHandleSeed;
+}
+
+void BaseConnection::endTxCh(uint32_t h) {
+	for(auto itr=mTxChList.begin();itr != mTxChList.end(); itr++) {
+		if(itr->handle == h) {
+			mTxChList.erase(itr);
+			break;
+		}
+	}
+}
+
+void BaseConnection::endRxCh(uint32_t h) {
+	ali("end rx ch=%d", h);
+	for(auto itr=mRxChList.begin();itr != mRxChList.end(); itr++) {
+		if(itr->handle == h) {
+			mRxChList.erase(itr);
+			break;
+		}
+	}
+}
+
+
+int BaseConnection::procWritable() {
+	uint32_t h=0;
+	for(;mTxChList.size()>0;) {
+		auto &c = mTxChList.front();
+		if(c.handle == h) {
+			// if tx channel owner is the same as previous one, exit loop
+			break;
+		}
+		h = c.handle;
+		c.lis(CH_WRITABLE);
+	}
+	return 0;
+}
+
+
+int BaseConnection::procClosed() {
+	std::list<_chlis> dummy;
+	dummy = move(mTxChList);
+	assert(mTxChList.empty());
+	for(auto &c : dummy) {
+		c.lis(CH_CLOSED);
+	}
+
+	dummy = move(mRxChList);
+	assert(mRxChList.empty());
+	for(auto &c : dummy) {
+		c.lis(CH_CLOSED);
+	}
+
+	return 0;
 }
 
 } /* namespace cahttp */

@@ -27,6 +27,7 @@ public:
 	int init(uint32_t handle, uint fd, ReHttpSvrCtx& svr);
 	void close();
 private:
+#if 0
 	class ServRecvif: public BaseConnection::RecvIf {
 		friend class ReSvrCnn;
 		ServRecvif(ReSvrCnn& cnn);
@@ -43,9 +44,10 @@ private:
 		virtual int OnCnn(int cnnstatus);
 		ReSvrCnn& mCnn;
 	};
+#endif
 
-	int procOnMsg(upBaseMsg upmsg);
-	int procOnData(std::string&& data);
+	int procOnMsg();
+	int procOnData();
 	int procOnCnn(int cnnstatus);
 	int procOnWritable();
 	void reserveWrite() {
@@ -67,12 +69,16 @@ private:
 	BaseConnection* mCnn;
 	ReHttpServer* mSvr;
 	ReHttpSvrCtx* mCtx;
+#if 0
 	ServRecvif mRecvIf;
 	ServCnnIf mCnnIf;
+#endif
 	ReUrlCtrl* mpCurCtrl;
 	edft::EdEventFd mEndEvt;
 	uint32_t mCtrlHandleSeed;
 	uint32_t mSendCtrlHandle;
+	uint32_t mTxHandle;
+	uint32_t mRxHandle;
 };
 
 } /* namespace cahttp */

@@ -23,6 +23,7 @@
 enum {
 	FB_FIN=0,
 	FB_TE, // 1==Transfer-Encoding
+	FB_SE, // sending end
 };
 
 #define F_GET(A) BIT_TEST(mStatusFlag, A)
@@ -42,24 +43,24 @@ using namespace cahttpu;
 
 namespace cahttp {
 
-HttpReq::HttpReq() : mCnnIf(*this), mRecvIf(*this) {
+HttpReq::HttpReq() {
 	mSvrIp = 0;
 	mSvrPort = 80;
 	mpCnn = nullptr;
-	mCnnHandle = 0;
 	mRecvDataCnt = 0;
-	mReqContentLen = 0;
-	mStatusFlag = 0;
+	mContentLen = 0;
 	mSendDataCnt = 0;
+	mRxHandle = 0;
+	mTxHandle = 0;
+	mStatusFlag = 0;
 }
 
 HttpReq::~HttpReq() {
 }
 
-int HttpReq::request(http_method method, const char *pdata, size_t data_len, const char* ctype) {
+int HttpReq::request(BaseMsg &msg) {
 	mSendDataCnt = 0;
-	mReqMsg.setMethod(method);
-	auto& url = mReqMsg.getUrl();
+	auto& url = msg.getUrl();
 	if(mpCnn==nullptr) {
 		mpCnn = new BaseConnection;
 		mPropCnn.reset(mpCnn);
@@ -83,29 +84,54 @@ int HttpReq::request(http_method method, const char *pdata, size_t data_len, con
 
 	if (mpCnn) {
 		if(F_TE()) {
-			mReqMsg.setTransferEncoding();
-		}
-		mReqMsg.addHdr(CAS::HS_DATE, get_http_cur_date_str());
-		if(pdata) {
-			if(ctype) mReqMsg.setContentType(ctype);
-			if(!F_TE()) {
-				mReqMsg.setContentLen(data_len);
-			}
+			msg.setTransferEncoding();
 		} else {
-			if(!F_TE() && mReqContentLen>=0) {
-				mReqMsg.setContentLen(mReqContentLen);
-			}
+			mContentLen = msg.getContentLenInt();
 		}
-		string msgstr = mReqMsg.serialize();
-		mpCnn->setRecvIf(&mRecvIf);
-		mCnnHandle = mpCnn->startSend(&mCnnIf);
-		if (mCnnHandle) {
-			if(pdata) {
-				auto *pb = new BytePacketBuf;
-				pb->setData(pdata, data_len);
-				mBufList.emplace_back();
-				mBufList.back().reset(pb);
+
+		string msgstr = msg.serialize();
+		mRxHandle = mpCnn->openRxCh([this](BaseConnection::CH_E evt) {
+			ald("rx ch event=%d", (int)evt);
+			if(evt == BaseConnection::CH_E::CH_MSG) {
+				return procOnMsg();
+			} else if(evt == BaseConnection::CH_E::CH_DATA) {
+				return procOnData();
+			} else if(evt == BaseConnection::CH_E::CH_CLOSED) {
+				if(F_FIN()==0) {
+					ali("*** request terminated prematurely");
+					FS_FIN();
+					mLis(ON_END);
+				}
+				closeTxCh(); // close tx ch manually,
+				return 0;
+			} else {
+				assert(0);
+				return 1;
 			}
+		});
+		ald("get rx ch=%d", mRxHandle);
+
+		mTxHandle = mpCnn->openTxCh([this](BaseConnection::CH_E evt) {
+			ald("tx ch event=%d", (int)evt);
+			if(evt == BaseConnection::CH_E::CH_WRITABLE) {
+				return procOnWritable();
+			} else if(evt == BaseConnection::CH_E::CH_CLOSED) {
+				ali("disconnected,...");
+				if(F_FIN()==0) {
+					ali("*** request terminated prematurely");
+					FS_FIN();
+					mLis(ON_END);
+				}
+				closeRxCh(); // close rx ch manually
+				return 0;
+			} else {
+				assert(0);
+				return 1;
+			}
+		});
+		ald("get tx ch=%d", mTxHandle);
+
+		if (mTxHandle) {
 			sendHttpMsg(move(msgstr));
 			return 0;
 		} else {
@@ -121,19 +147,8 @@ int HttpReq::request(http_method method, const char *pdata, size_t data_len, con
 
 }
 
-HttpReq::ReqCnnIf::ReqCnnIf(HttpReq& req): mReq(req) {
-
-}
-
-HttpReq::ReqCnnIf::~ReqCnnIf() {
-}
-
-int HttpReq::ReqCnnIf::OnWritable() {
-	return mReq.procWritable();
-}
-
 int HttpReq::sendPacket(const char* buf, size_t len) {
-	auto ret = mpCnn->send(mCnnHandle, buf, len);
+	auto ret = mpCnn->send(mTxHandle, buf, len);
 	if (ret > 0) {
 		// send fail
 		auto *pkt = new StringPacketBuf;
@@ -147,7 +162,7 @@ int HttpReq::sendPacket(const char* buf, size_t len) {
 }
 
 int HttpReq::sendPacket(string&& s) {
-	auto ret = mpCnn->send(mCnnHandle, s.data(), s.size());
+	auto ret = mpCnn->send(mTxHandle, s.data(), s.size());
 	if (ret > 0) {
 		// send fail
 		auto *pkt = new StringPacketBuf;
@@ -162,43 +177,25 @@ int HttpReq::sendPacket(string&& s) {
 
 int HttpReq::request_get(const std::string& url, Lis lis) {
 	mLis = lis;
-	mReqMsg.setUrl(url);
-	return request(HTTP_GET);
+	BaseMsg msg;
+	msg.setUrl(url);
+	setBasicHeader(msg, HTTP_GET);
+	msg.setContentLen(0);
+	return request(msg);
 }
 
-#if 0
-int HttpReq::procWritable() {
-//	ald("proc writable, buf list cnt=%d", mBufList.size());
-	int ret;
-	for (; mBufList.empty() == false;) {
-		auto *pktbuf = mBufList.front().get();
-		auto buf = pktbuf->getBuf();
-//		ald("get buf, size=%ld", buf.first);
-		if (buf.first > 0) {
-			if(F_TE() && pktbuf->getType()==0) {
-				string sbuf;
-				sbuf = cahttpu::fmt::format("{:x}\r\n", buf.first);
-				sbuf.append(buf.second, buf.first);
-				sbuf.append("\r\n");
-				ret = mpCnn->send(mCnnHandle, sbuf.data(), sbuf.size());
-			} else {
-				ret = mpCnn->send(mCnnHandle, buf.second, buf.first);
-			}
-			if (ret <= 0) {
-				pktbuf->consume();
-				if(ret<0) break;
-			} else {
-				break;
-			}
-		} else {
-			mBufList.pop_front();
-		}
-	}
-	ald("  buf list count=%d", mBufList.size());
-	return 0;
+
+int HttpReq::request_post(const std::string& url, Lis lis) {
+	mLis = lis;
+	BaseMsg msg;
+	msg.setUrl(url);
+	setBasicHeader(msg, HTTP_POST);
+	msg.setContentLen(0);
+	return request(msg);
 }
-#else
-int HttpReq::procWritable() {
+
+
+int HttpReq::procOnWritable() {
 	ald("proc writable, buf list cnt=%d", mBufList.size());
 	int ret;
 	for (; mBufList.empty() == false;) {
@@ -210,7 +207,7 @@ int HttpReq::procWritable() {
 				// writing chunk head
 				char tmp[20];
 				auto n = sprintf(tmp, "%lx\r\n", (size_t)buf.first);
-				ret = mpCnn->send(mCnnHandle, tmp, n);
+				ret = mpCnn->send(mTxHandle, tmp, n);
 				if(ret > 0 ) {
 					ald("*** chunk length write error");
 					stackTeByteBuf(buf.second, buf.first, true, true, true);
@@ -219,11 +216,11 @@ int HttpReq::procWritable() {
 					break;
 				}
 			}
-			ret = mpCnn->send(mCnnHandle, buf.second, buf.first);
+			ret = mpCnn->send(mTxHandle, buf.second, buf.first);
 			if (ret <= 0) {
 				if(F_TE() && pktbuf->getType()==0) {
 					// writing chunk tail
-					ret = mpCnn->send(mCnnHandle, "\r\n", 2);
+					ret = mpCnn->send(mTxHandle, "\r\n", 2);
 					if(ret>0) {
 						ald("*** fail writing chunk ending line");
 						stackTeByteBuf(nullptr, 0, false, false, true);
@@ -255,13 +252,18 @@ int HttpReq::procWritable() {
 	}
 	alv("  buf list count=%d", mBufList.size());
 	if(mBufList.empty()==true) {
+		if(F_GET(FB_SE)) {
+			ald("sending ended.");
+			mpCnn->endTxCh(mTxHandle); mTxHandle=0;
+		}
 		mLis(ON_SEND);
+	} else {
+
 	}
 END_SEND:
 	;
 	return 0;
 }
-#endif
 
 //int HttpReq::ReqCnnIf::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
 //	return mpReq->procOnMsg(move(upmsg));
@@ -280,8 +282,8 @@ int64_t HttpReq::getRespContentLen() {
 	return mupRespMsg->getContentLenInt();
 }
 
-int HttpReq::procOnMsg(std::unique_ptr<BaseMsg> upmsg) {
-	mupRespMsg = move(upmsg);
+int HttpReq::procOnMsg() {
+	mupRespMsg.reset( mpCnn->fetchMsg() );
 	assert(mLis);
 	mLis(ON_MSG);
 
@@ -299,9 +301,6 @@ int HttpReq::procOnMsg(std::unique_ptr<BaseMsg> upmsg) {
 //	return mpReq->procOnData(data);
 //}
 
-int HttpReq::ReqCnnIf::OnCnn(int cnnstatus) {
-	return mReq.procOnCnn(cnnstatus);
-}
 
 void HttpReq::close() {
 	if(mPropCnn) {
@@ -312,7 +311,7 @@ void HttpReq::close() {
 
 void HttpReq::setReqContent(const std::string& data, const std::string& content_type) {
 	if(data.size()>0) {
-		mReqContentLen = data.size();
+		mContentLen = data.size();
 		mReqMsg.setContentType(content_type);
 		StringPacketBuf *pbuf = new StringPacketBuf;
 		pbuf->setString(data.data(), data.size());
@@ -328,7 +327,7 @@ int HttpReq::setReqContentFile(const std::string& path, const std::string& conte
 		ald("set content file, size=%lu", pbuf->remain());
 		mBufList.emplace_back();
 		mBufList.back().reset(pbuf);
-		mReqContentLen = cahttpu::FileUtil::getSize(path);
+		mContentLen = cahttpu::FileUtil::getSize(path);
 		mReqMsg.setContentType(content_type);
 	} else {
 		delete pbuf;
@@ -337,41 +336,35 @@ int HttpReq::setReqContentFile(const std::string& path, const std::string& conte
 }
 
 
-int HttpReq::request_post(const std::string& url, Lis lis) {
-	mLis = lis;
-	mReqMsg.setUrl(url);
-	return request(HTTP_POST);
-}
-
 int HttpReq::sendHttpMsg(std::string&& msg) {
 	assert(msg.size()>0);
-//	ald("sending http msg: %s", msg);
-	auto ret = mpCnn->send(mCnnHandle, msg.data(), msg.size());
-	if (ret > 0) {
-		// send fail
-		auto *pkt = new StringPacketBuf;
-		pkt->setType(1);
-		pkt->setString(move(msg));
-		mBufList.emplace_front();
-		mBufList.front().reset(pkt);
-		return -1;
-	} else {
-		// TODO:
-		if(mBufList.size()>0) {
-			mpCnn->reserveWrite();
-		}
-		return ret;
+	if(!F_TE() && mContentLen <= mSendDataCnt) {
+		F_SET(FB_SE);
 	}
+//	ald("sending http msg: %s", msg);
+	auto ret = mpCnn->send(mTxHandle, msg.data(), msg.size());
+	if (ret == SEND_NEXT || ret == SEND_FAIL) {
+		// send fail
+		stackSendBuf(move(msg));
+	}
+	if(ret == SEND_RESULT::SEND_OK || ret == SEND_RESULT::SEND_PENDING) {
+		if(F_GET(FB_SE)) {
+			mpCnn->endRxCh(mTxHandle); mTxHandle=0;
+		}
+	}
+	return 0;
 }
 
 std::string HttpReq::fetchData() {
 	return move(mRecvDataBuf);
 }
 
-int HttpReq::procOnData(std::string& data) {
+int HttpReq::procOnData() {
+	auto data = mpCnn->fetchData();
 	alv("proc on data, size=%ld", data.size());
 	if(data.size()==0) {
 		ald("empty data, consider as message end signal,");
+		mpCnn->endRxCh(mRxHandle); mRxHandle=0;
 		FS_FIN();
 		mLis(ON_END);
 		return 1;
@@ -411,7 +404,7 @@ void HttpReq::transferEncoding(bool te) {
 void HttpReq::endData() {
 	if(F_TE()) {
 		if(mBufList.empty()==true) {
-			auto ret = mpCnn->send(mCnnHandle, "0\r\n\r\n", 5);
+			auto ret = mpCnn->send(mTxHandle, "0\r\n\r\n", 5);
 			if(ret<=0) {
 				return;
 			}
@@ -455,10 +448,10 @@ int HttpReq::sendData(const char* ptr, size_t len) {
 			s = cahttpu::fmt::format("{:x}\r\n", len);
 			s.append(ptr, len);
 			s.append("\r\n");
-			auto wret = mpCnn->send(mCnnHandle, s.data(), s.size());
+			auto wret = mpCnn->send(mTxHandle, s.data(), s.size());
 			return wret;
 		} else {
-			auto wret = mpCnn->send(mCnnHandle, ptr, len);
+			auto wret = mpCnn->send(mTxHandle, ptr, len);
 			return wret;
 		}
 	} else {
@@ -466,6 +459,7 @@ int HttpReq::sendData(const char* ptr, size_t len) {
 	}
 }
 
+#if 0
 HttpReq::localrecvif::localrecvif(HttpReq& r): mReq(r) {
 }
 
@@ -479,7 +473,120 @@ int HttpReq::localrecvif::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
 int HttpReq::localrecvif::OnData(std::string&& data) {
 	return mReq.procOnData(data);
 }
+#endif
 
 
+
+
+void HttpReq::stackSendBuf(std::string&& s) {
+	auto *pbuf = new StringPacketBuf;
+	pbuf->setString(move(s));
+	mBufList.emplace_back(pbuf);
+}
+
+void HttpReq::stackSendBuf(const char* ptr, size_t len) {
+	auto *pbuf = new BytePacketBuf;
+	pbuf->setData(ptr, len);
+	mBufList.emplace_back(pbuf);
+}
+
+void HttpReq::setBasicHeader(BaseMsg& msg, http_method method) {
+	msg.setMsgType(BaseMsg::MSG_TYPE_E::REQUEST);
+	msg.setMethod(method);
+	msg.addHdr(CAS::HS_DATE, get_http_cur_date_str());
+}
+
+int HttpReq::request(http_method method, const char* pdata, size_t data_len, const char* ctype) {
+	int r=0;
+	BaseMsg msg;
+	setBasicHeader(msg, method);
+	if(data_len>=0) {
+		msg.setContentLen(data_len);
+	}
+	if(ctype) {
+		msg.setContentType(ctype);
+	}
+
+	request(msg);
+	if(pdata && data_len>0) {
+		r=writeContent(pdata, data_len);
+	}
+	return r;
+}
+
+int HttpReq::writeContentFile(const char* path) {
+	if(F_GET(FB_SE)) {
+		return 1;
+	}
+	auto *pbuf = new FilePacketBuf;
+	auto f = pbuf->open(path);
+	if(!f) {
+		auto len = pbuf->remain();
+		if (!F_TE() && (mSendDataCnt + (int64_t)len > mContentLen)) {
+			ale("### too much content size, content_size=%ld, cur_send_cnt=%ld, data_len=%ld", mContentLen, mSendDataCnt, len);
+			goto err_exit;
+		}
+		mSendDataCnt += len;
+		mBufList.emplace_back(pbuf);
+		mpCnn->reserveWrite();
+		return 0;
+	}
+err_exit:
+	delete pbuf;
+	return 1;
+}
+
+int HttpReq::writeContent(const char* ptr, size_t len) {
+	if(F_GET(FB_SE)) {
+		return 1;
+	}
+	auto r = txContent(ptr, len);
+	if(r<0) {
+		stackSendBuf(ptr, len);
+	}
+	return r;
+}
+
+int HttpReq::txContent(const char* ptr, size_t len) {
+	int ret=1;
+	if (!F_TE() && (mSendDataCnt + (int64_t)len > mContentLen)) {
+		ale("### too much content size, content_size=%ld, cur_send_cnt=%ld, data_len=%ld", mContentLen, mSendDataCnt, len);
+		return 1;
+	}
+
+	mSendDataCnt += mContentLen;
+	if(!F_TE() && mSendDataCnt >= mContentLen) {
+		F_SET(FB_SE);
+	}
+
+	if (mBufList.empty() == true) {
+		auto sret = mpCnn->send(mTxHandle, ptr, len);
+		if (sret == SEND_RESULT::SEND_OK || sret == SEND_RESULT::SEND_PENDING) {
+			if(!F_TE() && F_GET(FB_SE)) {
+				mpCnn->endTxCh(mTxHandle); mTxHandle=0;
+			}
+			ret = 0;
+		} else if (sret == SEND_RESULT::SEND_NEXT) {
+			ret = -1;
+		}
+	} else {
+		ret = -1;
+	}
+	return ret;
+}
+
+
+
+int HttpReq::request(http_method method, const std::string& url, const std::string& data, const std::string& ctype, Lis lis) {
+	mLis = lis;
+	BaseMsg msg;
+	msg.setUrl(url);
+	setBasicHeader(msg, method);
+	msg.setContentLen(data.size());
+	msg.setContentType(ctype);
+	request(msg);
+	writeContent(data.data(), data.size());
+	return 0;
+}
 
 } /* namespace cahttp */

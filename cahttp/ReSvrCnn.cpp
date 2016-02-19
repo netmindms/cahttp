@@ -15,7 +15,7 @@
 #include "flog.h"
 namespace cahttp {
 
-ReSvrCnn::ReSvrCnn(): mRecvIf(*this), mCnnIf(*this) {
+ReSvrCnn::ReSvrCnn() /*: mRecvIf(*this), mCnnIf(*this) */ {
 	mHandle = 0;
 	mSvr = nullptr;
 	mCnn = nullptr;
@@ -42,17 +42,41 @@ int ReSvrCnn::init(uint32_t handle, uint fd, ReHttpSvrCtx& ctx) {
 		return -1;
 	}
 
-	mHandle = handle;
+//	mHandle = handle;
 	mSvr = mCtx->getServer();
 	mCnn = new BaseConnection;
+#if 1
+	mRxHandle = mCnn->openRxCh([this](BaseConnection::CH_E evt) {
+		if(evt == BaseConnection::CH_E::CH_MSG) {
+			return procOnMsg();
+		} else if(evt == BaseConnection::CH_E::CH_DATA) {
+			return procOnData();
+		} else if(evt == BaseConnection::CH_E::CH_CLOSED) {
+			return procOnCnn(0);
+		}
+		assert(0);
+		return 1;
+	});
+	mTxHandle = mCnn->openTxCh([this](BaseConnection::CH_E evt) {
+		if(evt == BaseConnection::CH_E::CH_WRITABLE) {
+			return procOnWritable();
+		} else if(evt == BaseConnection::CH_E::CH_CLOSED) {
+			return procOnCnn(0);
+		}
+		assert(0);
+		return 1;
+	});
+#else
 	mCnn->setRecvIf(&mRecvIf);
 	mCnn->startSend(&mCnnIf);
+#endif
 	mCnn->openServer(fd);
 	return 0;
 }
 
-int ReSvrCnn::procOnMsg(upBaseMsg upmsg) {
+int ReSvrCnn::procOnMsg() {
 	alv("proc on msg");
+	upBaseMsg upmsg(mCnn->fetchMsg());
 	auto &u = upmsg->getUrl();
 	CaHttpUrlParser parser;
 	if(!parser.parse(u)) {
@@ -86,9 +110,9 @@ void ReSvrCnn::dummyCtrl(uint32_t handle) {
 	ali("  dummy list cnt=%d", mDummyCtrls.size());
 }
 
-int ReSvrCnn::procOnData(std::string&& data) {
+int ReSvrCnn::procOnData() {
 	assert(mpCurCtrl);
-	return mpCurCtrl->procOnData(move(data));
+	return mpCurCtrl->procOnData(mCnn->fetchData());
 }
 
 void ReSvrCnn::clearDummy() {
@@ -98,7 +122,7 @@ void ReSvrCnn::clearDummy() {
 	mDummyCtrls.clear();
 }
 
-
+#if 0
 ReSvrCnn::ServRecvif::ServRecvif(ReSvrCnn& cnn): mCnn(cnn) {
 }
 
@@ -115,6 +139,7 @@ int cahttp::ReSvrCnn::ServRecvif::OnData(std::string&& data) {
 	mCnn.procOnData(move(data));
 	return 0;
 }
+#endif
 
 void ReSvrCnn::close() {
 	if(mHandle) {
@@ -171,7 +196,7 @@ void ReSvrCnn::endCtrl(uint32_t handle) {
 	}
 }
 
-
+#if 0
 ReSvrCnn::ServCnnIf::ServCnnIf(ReSvrCnn& cnn): mCnn(cnn) {
 }
 
@@ -185,6 +210,7 @@ int ReSvrCnn::ServCnnIf::OnWritable() {
 int ReSvrCnn::ServCnnIf::OnCnn(int cnnstatus) {
 	return mCnn.procOnCnn(cnnstatus);
 }
+#endif
 
 void ReSvrCnn::procDummyCtrls() {
 	for(;mDummyCtrls.size()>0;) {

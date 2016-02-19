@@ -64,8 +64,8 @@ TEST(req2, echo) {
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
-			req.setReqContent("message should be echoed.", "application/octet-stream");
-			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
+//			req.setReqContent("message should be echoed.", "application/octet-stream");
+			req.request(HTTP_POST, "http://localhost:3000/echo", "message should be echoed.", "application/octet-stream", [&](HttpReq::Event event) {
 				if(event == HttpReq::ON_MSG) {
 					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
 				} else if(event == HttpReq::ON_DATA) {

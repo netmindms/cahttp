@@ -17,8 +17,20 @@
 namespace cahttp {
 
 class BaseConnection {
+	friend class HttpReq;
 public:
-
+	enum CH_E {
+		CH_WRITABLE,
+		CH_CLOSED,
+		CH_MSG,
+		CH_DATA,
+	};
+	typedef std::function<int(CH_E evt)> ChLis;
+	struct _chlis {
+		uint32_t handle;
+		ChLis lis;
+	};
+#if 0
 	class CnnIf {
 	public:
 		CnnIf(){};
@@ -37,17 +49,20 @@ public:
 		virtual int OnMsg(std::unique_ptr<BaseMsg> upmsg)=0;
 		virtual int OnData(std::string&& data)=0;
 	};
+#endif
 	typedef std::function<void (BaseMsg&, int)> MsgLis;
 	BaseConnection();
 	virtual ~BaseConnection();
 	int openServer(int fd);
 	virtual int connect(uint32_t ip, int port);
+#if 0
 	void setRecvIf(RecvIf* pif) {
 		mRecvIf = pif;
 	}
 	virtual uint32_t startSend(CnnIf* pif);
 	virtual void changeSend(CnnIf* pif);
 	virtual void endSend(uint32_t handle);
+#endif
 	virtual cahttp::SEND_RESULT send(uint32_t handle, const char* buf, size_t len);
 	virtual void reserveWrite();
 	virtual void close();
@@ -57,17 +72,37 @@ public:
 //	void setCallback(CnnIf* pif);
 //	virtual void OnRecvMsg(CaHttpMsg &msg);
 //	virtual void OnRecvData(std::string& data);
+	uint32_t openTxCh(ChLis lis);
+	uint32_t openRxCh(ChLis lis);
+	void endTxCh(uint32_t h);
+	void endRxCh(uint32_t h);
+	BaseMsg* fetchMsg() {
+		return mRecvMsg.release();
+	};
+	std::string fetchData() {
+		return move(mRecvData);
+	}
 private:
 	HttpMsgFrame2 mMsgFrame;
 	edft::EdSmartSocket mSocket;
+#if 0
 	CnnIf *mNotiIf;
 	RecvIf *mRecvIf;
+#endif
 	size_t mBufSize;
 	char* mBuf;
 	uint8_t mStatusFlag;
+	std::list<_chlis> mTxChList;
+	std::list<_chlis> mRxChList;
+	uint32_t mHandleSeed;
+	upBaseMsg mRecvMsg;
+	std::string mRecvData;
 
 	int procRead();
-	void init(bool svr, int fd);
+	void init_sock(bool svr, int fd);
+	int procWritable();
+	int procClosed();
+
 };
 
 } /* namespace cahttp */
