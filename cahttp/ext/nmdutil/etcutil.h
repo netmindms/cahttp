@@ -12,9 +12,7 @@
 
 namespace cahttpu {
 
-#define NOW() std::chrono::system_clock::now()
-#define DURMSEC(t1, t2) std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
-typedef std::chrono::system_clock::time_point sctime_t;
+extern int get_num_fds();
 
 // flag must be unsigned
 #define BIT_SET(flag, POS) flag |= (1<<POS)

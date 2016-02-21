@@ -20,6 +20,7 @@ class BaseConnection {
 	friend class HttpReq;
 public:
 	enum CH_E {
+		CH_CONNECTED,
 		CH_WRITABLE,
 		CH_CLOSED,
 		CH_MSG,
@@ -54,7 +55,7 @@ public:
 	BaseConnection();
 	virtual ~BaseConnection();
 	int openServer(int fd);
-	virtual int connect(uint32_t ip, int port);
+	virtual int connect(uint32_t ip, int port, int timeout=30000); // timeout 30 sec
 #if 0
 	void setRecvIf(RecvIf* pif) {
 		mRecvIf = pif;
@@ -97,6 +98,7 @@ private:
 	uint32_t mHandleSeed;
 	upBaseMsg mRecvMsg;
 	std::string mRecvData;
+	edft::EdTimer mCnnTimer;
 
 	int procRead();
 	void init_sock(bool svr, int fd);

@@ -114,10 +114,22 @@ enum SEND_RESULT {
 	SEND_NEXT=2,
 };
 
+#define __HTTP_ERR_MAP(__ERRDEF) \
+	__ERRDEF(0, NO) \
+	__ERRDEF(1, EARLY_DISCONNECTED) \
+
+
+enum ERR {
+#define __ERRDEF(num, name) E_##name=num,
+	__HTTP_ERR_MAP(__ERRDEF)
+};
+#undef __ERRDEF
 
 extern std::string gHttpMethodStr[30];
 
 #define METHOD_STR(m) gHttpMethodStr[m]
+
+extern const char* __HTTP_ERR_STR[];
 
 typedef std::pair<std::string, std::vector<std::string>> hdrpair;
 typedef std::vector<hdrpair> HdrList;
@@ -136,6 +148,8 @@ uint32_t get_ip_from_hostname(const std::string& hostname);
 std::string get_http_cur_date_str();
 
 void set_log_level(int level);
+
+const char* cahttp_err_str(ERR e);
 
 }
 #endif /* SRC_CAHTTPCOMMON_H_ */

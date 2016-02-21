@@ -20,8 +20,9 @@ BaseMsg::BaseMsg() {
 	mMsgType = REQUEST;
 	mContentLen = 0;
 	mMethod = HTTP_GET;
-	mParserFlag = 0;
 	mRespStatusCode = 0;
+	mStatus.val = 0;
+	mpClenHdr = nullptr;
 }
 
 BaseMsg::~BaseMsg() {
@@ -55,7 +56,6 @@ void BaseMsg::clear() {
 	mUrlStr.clear();
 	mContentLen = 0;
 	mProtocolVer.clear();
-	mParserFlag = 0;
 	mRespStatusCode = 0;
 }
 
@@ -64,14 +64,45 @@ void BaseMsg::setUrl(const std::string& urlstr) {
 }
 
 void BaseMsg::setContentType(const std::string& type) {
-	addHdr(CAS::HS_CONTENT_TYPE, type);
+	setHdr(CAS::HS_CONTENT_TYPE, type);
 }
 
 void BaseMsg::setContentLen(int64_t len) {
 	mContentLen = len;
 	if(mContentLen>=0) {
-		addHdr(CAS::HS_CONTENT_LEN, to_string(len));
+		if(mpClenHdr == nullptr) {
+			mpClenHdr = findHdr(CAS::HS_CONTENT_LEN);
+		}
+		if(mpClenHdr==nullptr) {
+			mHdrList.emplace_back(CAS::HS_CONTENT_LEN, to_string(len));
+			mpClenHdr = &(mHdrList.back());
+		}
+		mpClenHdr->second = to_string(len);
+		if(mStatus.te) {
+			removeHdr(CAS::HS_CONTENT_LEN);
+		}
 	}
+}
+
+void BaseMsg::removeHdr(const std::string& name) {
+	for(auto itr=mHdrList.begin(); itr != mHdrList.end(); itr++) {
+		if(!strcasecmp(name.data(), itr->first.data())) {
+			mHdrList.erase(itr);
+			break;
+		}
+	}
+}
+
+void BaseMsg::setHdr(const std::string& name, const std::string& val) {
+
+	for(auto itr=mHdrList.begin(); itr != mHdrList.end(); itr++) {
+		if(!strcasecmp(name.data(), itr->first.data())) {
+			itr->second = val;
+			return;
+		}
+	}
+
+	addHdr(name, val);
 }
 
 std::string BaseMsg::serialize() {
@@ -102,8 +133,24 @@ std::string BaseMsg::serialize() {
 }
 
 
-void BaseMsg::setTransferEncoding() {
-	addHdr(CAS::HS_TRANSFER_ENC, "chunked");
+void BaseMsg::setTransferEncoding(bool te) {
+	if(	mStatus.te == 0 && te) {
+		addHdr(CAS::HS_TRANSFER_ENC, "chunked");
+		mStatus.te = 1;
+	} else if( mStatus.te == 1 && !te){
+		if( mStatus.te == 1) {
+			removeHdr(CAS::HS_TRANSFER_ENC);
+		}
+	}
+}
+
+std::pair<std::string, std::string>* BaseMsg::findHdr(const std::string& name) {
+	for(auto &h: mHdrList) {
+		if(!strcasecmp(h.first.c_str(), name.c_str())) {
+			return &h;
+		}
+	}
+	return nullptr;
 }
 
 } /* namespace cahttp */

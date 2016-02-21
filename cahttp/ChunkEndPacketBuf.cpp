@@ -13,7 +13,7 @@ namespace cahttp {
 TEEndPacketBuf::TEEndPacketBuf() {
 	memcpy(mLineEnd, "0\r\n\r\n", 5);
 	mLen = 5;
-	setType(1);
+	setType(0);
 }
 
 TEEndPacketBuf::~TEEndPacketBuf() {

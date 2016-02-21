@@ -9,13 +9,29 @@
 #include <sys/utsname.h>
 #include <list>
 #include <ednio/EdNio.h>
+#include <bitset>
+
 #include "../cahttp/flog.h"
 #include "../cahttp/RegExp.h"
+#include "../cahttp/ext/nmdutil/etcutil.h"
 using namespace std;
 void serverlive();
 
+namespace nu = cahttpu;
+union tt {
+	uint8_t val;
+	struct {
+		unsigned char s:1;
+		unsigned char v:1;
+		unsigned char d:1;
+		unsigned char z:1;
+		unsigned char :0;
+	};
+};
+
 
 int main(int argc, char* argv[]) {
+
 //	cahttp::RegExp reg;
 //	const char *pa = R"(/([0-9]+)/([0-9]+))";
 //	auto r = reg.setPattern(pa);
@@ -53,7 +69,7 @@ int main(int argc, char* argv[]) {
 //	::testing::GTEST_FLAG(filter) = "frame2.*";
 //	::testing::GTEST_FLAG(filter) = "frame2.*";
 //	::testing::GTEST_FLAG(filter) = "pktbuf.*";
-	::testing::GTEST_FLAG(filter) = "req2.echo";
+	::testing::GTEST_FLAG(filter) = "req2.echo_manual_tec_zero";
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc";
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc_file";
 //	::testing::GTEST_FLAG(filter) = "req2.manualdata";

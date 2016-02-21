@@ -16,6 +16,13 @@
 namespace cahttp {
 
 class BaseMsg {
+private:
+	union status_t {
+		unsigned char val;
+		struct {
+			unsigned char te: 1;
+		};
+	};
 public:
 	enum MSG_TYPE_E { REQUEST, RESPONSE };
 	BaseMsg();
@@ -41,6 +48,8 @@ public:
 	}
 
 	void addHdr(const std::string& name, const std::string &val);
+	void setHdr(const std::string& name, const std::string &val);
+	void removeHdr(const std::string& name);
 	void setMethod(http_method method) {
 		mMethod = method;
 	}
@@ -53,17 +62,16 @@ public:
 	int getRespStatus() {
 		return mRespStatusCode;
 	}
-	void setParserFlag(uint8_t flag) {
-		mParserFlag = flag;
-	}
 	void setProtocolVer(const std::string& protocl_ver) {
 		mProtocolVer = protocl_ver;
 	}
 
 	void setContentType(const std::string& type);
 	void setContentLen(int64_t len);
-	void setTransferEncoding();
-
+	void setTransferEncoding(bool te);
+	inline bool getTransferEncoding() {
+		return mStatus.te;
+	};
 	std::string dumpHdr();
 	void clear();
 	std::string serialize();
@@ -71,12 +79,15 @@ public:
 private:
 	int mRespStatusCode;
 	std::string mProtocolVer;
-	uint8_t mParserFlag;
 	http_method mMethod;
 	int64_t mContentLen;
 	MSG_TYPE_E mMsgType;
 	std::string mUrlStr;
+	status_t mStatus;
+	std::pair<std::string, std::string> *mpClenHdr;
 	std::list<std::pair<std::string, std::string>> mHdrList;
+	std::pair<std::string, std::string>* findHdr(const std::string& name);
+
 };
 
 typedef std::unique_ptr<BaseMsg> upBaseMsg;

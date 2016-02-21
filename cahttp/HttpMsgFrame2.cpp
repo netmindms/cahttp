@@ -231,7 +231,7 @@ int HttpMsgFrame2::dgHeaderComp(http_parser* parser) {
 	}
 
 	mMsg->setContentLenInt(mContentLen);
-	mMsg->setParserFlag(parser->flags);
+//	mMsg->setParserFlag(parser->flags);
 	if (parser->protocol_type == 'R') {
 		mMsg->setProtocolVer("RTSP/1.0");
 	}

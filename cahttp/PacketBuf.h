@@ -30,7 +30,7 @@ public:
 	}
 
 private:
-	int mType;
+	int mType; // o==normal, 1==transfer encoding
 };
 
 } /* namespace cahttp */

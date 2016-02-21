@@ -11,6 +11,7 @@ G * BaseConnection.cpp
 #include "BaseMsg.h"
 #include "BaseConnection.h"
 #include "ext/nmdutil/etcutil.h"
+#include "ext/nmdutil/netutil.h"
 #include "flog.h"
 
 using namespace edft;
@@ -52,7 +53,7 @@ BaseConnection::~BaseConnection() {
 }
 
 
-int BaseConnection::connect(uint32_t ip, int port) {
+int BaseConnection::connect(uint32_t ip, int port, int timeout) {
 	if(!mBuf) {
 		mBuf = new char[mBufSize];
 		assert(mBuf);
@@ -80,6 +81,15 @@ int BaseConnection::connect(uint32_t ip, int port) {
 		}
 	});
 #endif
+
+	mCnnTimer.setOnListener([this, ip, port](EdTimer& timer) {
+		alw("*** connecting timeout... ip=%s, port=%d", cahttpu::Ip2CStr(ip), port);
+		timer.kill();
+		mSocket.close();
+		FSET_DISCNN();
+		procClosed();
+	});
+	mCnnTimer.set(timeout);
 	return mSocket.connect(ip, port);
 
 }
@@ -131,6 +141,8 @@ void BaseConnection::close() {
 		ali("close socket, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
 		mSocket.close();
 	}
+
+	mCnnTimer.kill();
 }
 
 void BaseConnection::reserveWrite() {
@@ -222,11 +234,13 @@ void BaseConnection::init_sock(bool svr, int fd) {
 	mSocket.setOnListener([this](EdSmartSocket& sck, int event) {
 			if(event == NETEV_CONNECTED) {
 				ald("sock connected");
+				mCnnTimer.kill();
 				FSET_CNN();
 	//			mNotiIf->OnWritable();
 				procWritable();
 			} else if(event == NETEV_DISCONNECTED) {
 				ali("*** sock disconnected...");
+				mCnnTimer.kill();
 				sck.close();
 				FSET_DISCNN();
 	//			mNotiIf->OnCnn(0);

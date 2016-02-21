@@ -164,6 +164,12 @@ public:
 
 __httpinit__ _ghttplibinst;
 
+const char* __HTTP_ERR_STR[] = {
+#define __ERRDEF(id, name) #name,
+		__HTTP_ERR_MAP(__ERRDEF)
+};
+#undef __ERRDEF
+
 vector<uint32_t> dns_lookup(const string& hostname) {
 	vector<uint32_t> result;
 	int i;
@@ -280,9 +286,15 @@ string get_http_cur_date_str() {
 	return move(ds);
 }
 
-
 void set_log_level(int level) {
 	NMDU_SET_LOG_LEVEL(level);
 }
 
+
+const char* cahttp_err_str(ERR e) {
+	if(e<sizeof(__HTTP_ERR_STR)/sizeof(__HTTP_ERR_STR[0]) )
+		return __HTTP_ERR_STR[e];
+	else
+		return "";
+}
 }
