@@ -143,7 +143,7 @@ int ReUrlCtrl::response(int status_code, const char *pdata, size_t data_len, con
 
 int ReUrlCtrl::response(BaseMsg& msg) {
 	mSendDataCnt = 0;
-	mContentLen = msg.getContentLenInt();
+	mContentLen = msg.getContentLen();
 	auto s = msg.serialize();
 	auto sret = mpServCnn->send(mHandle, s.data(), s.size());
 	if(sret == SEND_RESULT::SEND_OK) {

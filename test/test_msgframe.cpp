@@ -256,7 +256,7 @@ TEST(frame2, basic) {
 		msg.clear();
 		fret = frame.fetchMsg(msg);
 		ASSERT_EQ(fret, frame.MSG_WITHDATA);
-		ASSERT_EQ(msg.getContentLenInt(), 3);
+		ASSERT_EQ(msg.getContentLen(), 3);
 		fs = frame.status();
 		ASSERT_EQ(fs, frame.FS_DATA);
 		data.clear();

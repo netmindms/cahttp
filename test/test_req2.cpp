@@ -349,3 +349,59 @@ TEST(req2, cnn_timeout) {
 	});
 	task.runMain();
 }
+
+TEST(req2, reuse) {
+//	auto ss = sizeof(BaseMsg::status_t);
+	FDCHK_S(1);
+	EdTask task;
+	HttpReq req;
+	string data1 = "echo\n";
+	string data2 = "echo reused\n";
+	string recv1, recv2;
+	int chkfd;
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			chkfd = cahttpu::get_num_fds();
+			req.request(HTTP_POST, "http://localhost:3000/echo", data1, "application/octet-stream", [&](HttpReq::Event event) {
+				if(event == HttpReq::ON_MSG) {
+					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
+				} else if(event == HttpReq::ON_DATA) {
+
+				} else if(event == HttpReq::ON_END) {
+					ali("request end,...");
+					recv1 = req.fetchData();
+					ali("  recv data=%s", recv1);
+					task.postMsg(EDM_USER, 0, 0);
+				}
+			});
+		} else if(msg.msgid == EDM_CLOSE) {
+			req.close();
+			task.killTimer(1);
+			auto tfd = cahttpu::get_num_fds();
+			assert(tfd == chkfd);
+			ali("task closed");
+		} else if(msg.msgid == EDM_USER) {
+			req.clear();
+			req.transferEncoding(true);
+			req.setContentType(CAS::CT_APP_OCTET);
+			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
+				if(event == HttpReq::ON_END) {
+					ali("second req end, ");
+					recv2 = req.fetchData();
+					task.postExit();
+				}
+			});
+			req.writeData(data2.data(), data2.size());
+			req.endData();
+		} else if(msg.msgid == EDM_TIMER) {
+			task.killTimer(1);
+			task.postExit();
+		}
+		return 0;
+	});
+	task.runMain();
+	ASSERT_STREQ(recv1.c_str(), data1.c_str());
+	ASSERT_STREQ(recv2.c_str(), data2.c_str());
+	FDCHK_E(1);
+}

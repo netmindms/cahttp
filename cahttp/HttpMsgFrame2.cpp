@@ -230,7 +230,7 @@ int HttpMsgFrame2::dgHeaderComp(http_parser* parser) {
 		mMsg->setRespStatus(parser->status_code);
 	}
 
-	mMsg->setContentLenInt(mContentLen);
+	mMsg->setContentLen(mContentLen);
 //	mMsg->setParserFlag(parser->flags);
 	if (parser->protocol_type == 'R') {
 		mMsg->setProtocolVer("RTSP/1.0");

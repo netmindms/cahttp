@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <list>
+#include "CaHttpCommon.h"
 #include "http_parser.h"
 
 namespace cahttp {
@@ -20,7 +21,13 @@ private:
 	union status_t {
 		unsigned char val;
 		struct {
-			unsigned char te: 1;
+			uint8_t c_len:1;
+			uint8_t c_te:1;
+			uint8_t c_ct:1;
+			uint8_t te:1;
+		};
+		struct {
+			uint8_t cache:2;
 		};
 	};
 public:
@@ -28,12 +35,13 @@ public:
 	BaseMsg();
 	BaseMsg(MSG_TYPE_E type);
 	virtual ~BaseMsg();
-	int64_t getContentLenInt() {
-		return mContentLen;
-	}
-	void setContentLenInt(int64_t len) {
-		mContentLen = len;
-	}
+	int64_t getContentLen();
+	void setContentLen(int64_t len);
+	bool getTransferEncoding();
+	void setTransferEncoding(bool te);
+	void setContentType(const std::string& type);
+	const std::string& getContentType();
+
 	int getMsgType() {
 		return mMsgType;
 	}
@@ -66,12 +74,9 @@ public:
 		mProtocolVer = protocl_ver;
 	}
 
-	void setContentType(const std::string& type);
-	void setContentLen(int64_t len);
-	void setTransferEncoding(bool te);
-	inline bool getTransferEncoding() {
-		return mStatus.te;
-	};
+
+
+
 	std::string dumpHdr();
 	void clear();
 	std::string serialize();
@@ -84,7 +89,8 @@ private:
 	MSG_TYPE_E mMsgType;
 	std::string mUrlStr;
 	status_t mStatus;
-	std::pair<std::string, std::string> *mpClenHdr;
+	std::pair<std::string, std::string>* mpCtypeHdr;
+//	std::pair<std::string, std::string> *mpClenHdr, *mpTeHdr;
 	std::list<std::pair<std::string, std::string>> mHdrList;
 	std::pair<std::string, std::string>* findHdr(const std::string& name);
 

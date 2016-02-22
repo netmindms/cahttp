@@ -15,6 +15,7 @@
 #include "CaHttpCommon.h"
 #include "BytePacketBuf.h"
 #include "TEEndPacketBuf.h"
+#include "BaseMsg.h"
 
 #include "ext/nmdutil/FileUtil.h"
 #include "ext/nmdutil/etcutil.h"
@@ -116,7 +117,7 @@ int HttpReq::request(BaseMsg &msg) {
 		if (mTxHandle) {
 			mStatus.te = msg.getTransferEncoding();
 			if(!mStatus.te) {
-				mContentLen = msg.getContentLenInt();
+				mContentLen = msg.getContentLen();
 			}
 			bool content=false;
 			if(mPresetContent.second) {
@@ -279,7 +280,7 @@ int HttpReq::getRespStatus() {
 }
 
 int64_t HttpReq::getRespContentLen() {
-	return mupRespMsg->getContentLenInt();
+	return mupRespMsg->getContentLen();
 }
 
 int HttpReq::procOnMsg() {
@@ -704,7 +705,7 @@ int HttpReq::request(http_method method, const std::string& url, const std::stri
 	mLis = lis;
 	mReqMsg.setUrl(url);
 	setBasicHeader(mReqMsg, method);
-	if(!mStatus.te) {
+	if(!mReqMsg.getTransferEncoding()) {
 		mReqMsg.setContentLen(data.size());
 	}
 	mReqMsg.setContentType(ctype);

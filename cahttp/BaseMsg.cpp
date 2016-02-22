@@ -17,12 +17,13 @@ using namespace std;
 namespace cahttp {
 
 BaseMsg::BaseMsg() {
+	assert(sizeof(status_t)==1);
 	mMsgType = REQUEST;
 	mContentLen = 0;
 	mMethod = HTTP_GET;
 	mRespStatusCode = 0;
 	mStatus.val = 0;
-	mpClenHdr = nullptr;
+	mpCtypeHdr = nullptr;
 }
 
 BaseMsg::~BaseMsg() {
@@ -39,9 +40,6 @@ void BaseMsg::setUrl(const char* ptr, size_t len) {
 	mUrlStr.assign(ptr, len);
 }
 
-void BaseMsg::addHdr(const std::string& name, const std::string& val) {
-	mHdrList.emplace_back(name, val);
-}
 
 std::string BaseMsg::dumpHdr() {
 	string res;
@@ -57,17 +55,49 @@ void BaseMsg::clear() {
 	mContentLen = 0;
 	mProtocolVer.clear();
 	mRespStatusCode = 0;
+//	mpClenHdr = nullptr;
+	mStatus.val = 0;
 }
 
 void BaseMsg::setUrl(const std::string& urlstr) {
 	mUrlStr = urlstr;
 }
 
-void BaseMsg::setContentType(const std::string& type) {
-	setHdr(CAS::HS_CONTENT_TYPE, type);
+const std::string& BaseMsg::getContentType() {
+	static std::string nullstr;
+	if(mStatus.c_ct) {
+		if(mpCtypeHdr) {
+			return mpCtypeHdr->second;
+		} else {
+			return nullstr;
+		}
+	} else {
+
+	}
 }
 
+void BaseMsg::setContentType(const std::string& type) {
+	if(mStatus.c_ct) {
+		if(mpCtypeHdr) {
+			mpCtypeHdr->second = type;
+		} else {
+			mHdrList.emplace_back(CAS::HS_CONTENT_TYPE, type);
+			mpCtypeHdr = &(mHdrList.end());
+		}
+	} else {
+		mHdrList.emplace_back(CAS::HS_CONTENT_TYPE, type);
+		mpCtypeHdr = &(mHdrList.end());
+	}
+	mStatus.c_ct = 1;
+}
+
+#if 0
 void BaseMsg::setContentLen(int64_t len) {
+#if 1
+	removeHdr(CAS::HS_TRANSFER_ENC);
+	setHdr(CAS::HS_CONTENT_LEN, to_string(len));
+	mContentLen = len;
+#else
 	mContentLen = len;
 	if(mContentLen>=0) {
 		if(mpClenHdr == nullptr) {
@@ -78,13 +108,33 @@ void BaseMsg::setContentLen(int64_t len) {
 			mpClenHdr = &(mHdrList.back());
 		}
 		mpClenHdr->second = to_string(len);
-		if(mStatus.te) {
-			removeHdr(CAS::HS_CONTENT_LEN);
+		if(mpTeHdr) {
+			removeHdr(CAS::HS_TRANSFER_ENC);
+			mpTeHdr = nullptr;
 		}
 	}
+#endif
+}
+#endif
+
+void BaseMsg::addHdr(const std::string& name, const std::string& val) {
+	mStatus.cache = 0;
+	mHdrList.emplace_back(name, val);
+}
+
+void BaseMsg::setHdr(const std::string& name, const std::string& val) {
+	mStatus.cache = 0;
+	for(auto itr=mHdrList.begin(); itr != mHdrList.end(); itr++) {
+		if(!strcasecmp(name.data(), itr->first.data())) {
+			itr->second = val;
+			return;
+		}
+	}
+	addHdr(name, val);
 }
 
 void BaseMsg::removeHdr(const std::string& name) {
+	mStatus.cache = 0;
 	for(auto itr=mHdrList.begin(); itr != mHdrList.end(); itr++) {
 		if(!strcasecmp(name.data(), itr->first.data())) {
 			mHdrList.erase(itr);
@@ -93,17 +143,6 @@ void BaseMsg::removeHdr(const std::string& name) {
 	}
 }
 
-void BaseMsg::setHdr(const std::string& name, const std::string& val) {
-
-	for(auto itr=mHdrList.begin(); itr != mHdrList.end(); itr++) {
-		if(!strcasecmp(name.data(), itr->first.data())) {
-			itr->second = val;
-			return;
-		}
-	}
-
-	addHdr(name, val);
-}
 
 std::string BaseMsg::serialize() {
 	string encstr;
@@ -133,16 +172,6 @@ std::string BaseMsg::serialize() {
 }
 
 
-void BaseMsg::setTransferEncoding(bool te) {
-	if(	mStatus.te == 0 && te) {
-		addHdr(CAS::HS_TRANSFER_ENC, "chunked");
-		mStatus.te = 1;
-	} else if( mStatus.te == 1 && !te){
-		if( mStatus.te == 1) {
-			removeHdr(CAS::HS_TRANSFER_ENC);
-		}
-	}
-}
 
 std::pair<std::string, std::string>* BaseMsg::findHdr(const std::string& name) {
 	for(auto &h: mHdrList) {
@@ -153,4 +182,56 @@ std::pair<std::string, std::string>* BaseMsg::findHdr(const std::string& name) {
 	return nullptr;
 }
 
+
+int64_t BaseMsg::getContentLen() {
+	if(mStatus.c_len) {
+		return mContentLen;
+	} else {
+		mStatus.c_len = 1;
+		auto *phd = findHdr(CAS::HS_CONTENT_LEN);
+		if(phd) {
+			mContentLen = stol(phd->second);
+		} else {
+			mContentLen = 0;
+		}
+		return mContentLen;
+	}
+}
+
+void BaseMsg::setContentLen(int64_t len) {
+	mStatus.c_len = 1;
+	mContentLen = len;
+	setHdr(CAS::HS_CONTENT_LEN, std::to_string(len));
+}
+
+bool BaseMsg::getTransferEncoding() {
+	if(mStatus.c_te) {
+		return mStatus.te;
+	} else {
+		mStatus.c_te = 1;
+		auto *phdr = findHdr(CAS::HS_TRANSFER_ENC);
+		if(phdr && phdr->second=="chunked") {
+			mStatus.te = 1;
+		} else {
+			mStatus.te = 0;
+		}
+		return mStatus.te;
+	}
+};
+
+void BaseMsg::setTransferEncoding(bool te) {
+	mStatus.c_te = 1;
+	mStatus.te = te;
+	if(te) {
+		removeHdr(CAS::HS_CONTENT_LEN);
+		setHdr(CAS::HS_TRANSFER_ENC, "chunked");
+		mContentLen=0;
+		mStatus.c_len=1;
+	} else {
+		removeHdr(CAS::HS_TRANSFER_ENC);
+	}
+
+};
+
 } /* namespace cahttp */
+
