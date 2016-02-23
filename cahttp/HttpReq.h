@@ -75,7 +75,7 @@ public:
 	int setReqContentFile(const std::string& path, const std::string& content_type);
 	void transferEncoding(bool te);
 	void endData();
-	void close();
+	virtual void close();
 	std::string fetchData();
 	inline void setReqContentType(const std::string& content_type) {
 		mReqMsg.addHdr(cahttp::CAS::HS_CONTENT_TYPE, content_type);

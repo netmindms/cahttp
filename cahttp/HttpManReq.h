@@ -11,13 +11,22 @@
 #include "HttpReq.h"
 
 namespace cahttp {
+class ReqMan;
 
 class HttpManReq: public HttpReq {
+	friend class ReqMan;
 public:
 	HttpManReq();
 	virtual ~HttpManReq();
+	void close() override;
 private:
 	uint32_t mHandle;
+	ReqMan* mpReqMan;
+
+	void init(ReqMan& rm, uint32_t handle) {
+		mpReqMan = &rm;
+		mHandle = handle;
+	};
 };
 
 } /* namespace cahttp */

@@ -82,11 +82,11 @@ void BaseMsg::setContentType(const std::string& type) {
 			mpCtypeHdr->second = type;
 		} else {
 			mHdrList.emplace_back(CAS::HS_CONTENT_TYPE, type);
-			mpCtypeHdr = &(mHdrList.end());
+			mpCtypeHdr = &(mHdrList.back());
 		}
 	} else {
 		mHdrList.emplace_back(CAS::HS_CONTENT_TYPE, type);
-		mpCtypeHdr = &(mHdrList.end());
+		mpCtypeHdr = &(mHdrList.back());
 	}
 	mStatus.c_ct = 1;
 }

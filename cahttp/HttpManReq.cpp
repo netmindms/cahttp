@@ -5,6 +5,7 @@
  *      Author: netmind
  */
 
+#include "ReqMan.h"
 #include "HttpManReq.h"
 
 namespace cahttp {
@@ -15,6 +16,16 @@ HttpManReq::HttpManReq() {
 
 HttpManReq::~HttpManReq() {
 	// TODO Auto-generated destructor stub
+}
+
+void HttpManReq::close() {
+	HttpReq::close();
+	if(mHandle) {
+		assert(mpReqMan);
+		mpReqMan->dummyReq(mHandle);
+		mHandle=0;
+		mpReqMan = nullptr;
+	}
 }
 
 } /* namespace cahttp */

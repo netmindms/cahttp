@@ -143,6 +143,7 @@ void BaseConnection::close() {
 	}
 
 	mCnnTimer.kill();
+
 }
 
 void BaseConnection::reserveWrite() {
@@ -312,18 +313,23 @@ int BaseConnection::procWritable() {
 
 int BaseConnection::procClosed() {
 	std::list<_chlis> dummy;
-	dummy = move(mTxChList);
-	assert(mTxChList.empty());
-	for(auto &c : dummy) {
-		c.lis(CH_CLOSED);
+	if(mTxChList.size()) {
+		dummy = move(mTxChList);
+		assert(mTxChList.empty());
+		for(auto &c : dummy) {
+			c.lis(CH_CLOSED);
+		}
+		dummy.clear();
 	}
 
-	dummy = move(mRxChList);
-	assert(mRxChList.empty());
-	for(auto &c : dummy) {
-		c.lis(CH_CLOSED);
+	if(mRxChList.size()) {
+		dummy = move(mRxChList);
+		assert(mRxChList.empty());
+		for(auto &c : dummy) {
+			c.lis(CH_CLOSED);
+		}
+		dummy.clear();
 	}
-
 	return 0;
 }
 

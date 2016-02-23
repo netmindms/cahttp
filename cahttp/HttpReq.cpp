@@ -356,15 +356,18 @@ int HttpReq::sendHttpMsg(std::string&& msg) {
 	}
 //	ald("sending http msg: %s", msg);
 	auto ret = mpCnn->send(mTxHandle, msg.data(), msg.size());
-	if (ret == SEND_NEXT || ret == SEND_FAIL) {
-		// send fail
-		stackSendBuf(move(msg));
-	}
 	if(ret == SEND_RESULT::SEND_OK || ret == SEND_RESULT::SEND_PENDING) {
 		if(mStatus.se) {
 			mpCnn->endRxCh(mTxHandle); mTxHandle=0;
+		} else {
+			mpCnn->reserveWrite();
 		}
+	} else if (ret == SEND_NEXT || ret == SEND_FAIL) {
+		// send fail
+		stackSendBuf(move(msg));
 	}
+
+
 	return 0;
 }
 

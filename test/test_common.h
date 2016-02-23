@@ -12,6 +12,8 @@
 #define FDCHK_S(A) int _fdchk_s_##A = cahttpu::get_num_fds()
 #define FDCHK_E(A) int _fdchk_e_##A = cahttpu::get_num_fds(); assert(_fdchk_s_##A == _fdchk_e_##A)
 
+#define FDCHK_SV(A) A = cahttpu::get_num_fds()
+#define FDCHK_EV(A) A = cahttpu::get_num_fds(); assert(A == A)
 //#define FDCHK_S(A) int FDCHK_S_##_A = get_num_fds();
 //#define FDCHK_E(A) int FDCHK_E_##_A = get_num_fds(); assert(_sfd == _efd);
 //int get_num_fds();

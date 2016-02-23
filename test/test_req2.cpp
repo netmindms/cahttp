@@ -12,9 +12,9 @@
 #include "../cahttp/HttpReq.h"
 #include "../cahttp/flog.h"
 #include "../cahttp/CaHttpCommon.h"
+#include "../cahttp/ReqMan.h"
 #include "testutil.h"
 #include "test_common.h"
-
 using namespace cahttp;
 using namespace edft;
 using namespace std;
@@ -372,7 +372,7 @@ TEST(req2, reuse) {
 					ali("request end,...");
 					recv1 = req.fetchData();
 					ali("  recv data=%s", recv1);
-					task.postMsg(EDM_USER, 0, 0);
+					task.postMsg(EDM_USER);
 				}
 			});
 		} else if(msg.msgid == EDM_CLOSE) {
@@ -404,4 +404,57 @@ TEST(req2, reuse) {
 	ASSERT_STREQ(recv1.c_str(), data1.c_str());
 	ASSERT_STREQ(recv2.c_str(), data2.c_str());
 	FDCHK_E(1);
+}
+
+
+TEST(req2, reqman) {
+	EdTask task;
+	ReqMan man;
+	HttpReq *preq;
+
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			preq = man.getReq(inet_addr("127.0.0.1"), 3000);
+			preq->request(HTTP_POST, "http://localhost:3000/echo", "echo", CAS::CT_APP_OCTET, [&](HttpReq::Event evt) {
+				if(evt == HttpReq::ON_END) {
+					ali("on end");
+					preq->close();
+				}
+			});
+		} else if(msg.msgid == EDM_CLOSE) {
+			ali("task closed");
+		}
+		return 0;
+	});
+	task.runMain();
+}
+
+
+TEST(req2, reqman_premature_close) {
+	EdTask task;
+	ReqMan man;
+	HttpReq *preq;
+	int fdn;
+
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			FDCHK_SV(fdn);
+			preq = man.getReq(inet_addr("10.0.0.1"), 3000);
+			preq->request(HTTP_POST, "http://10.0.0.1:3000/echo", "echo", CAS::CT_APP_OCTET, [&](HttpReq::Event evt) {
+				if(evt == HttpReq::ON_END) {
+					ali("on end");
+					preq->close();
+				}
+			});
+			task.postExit();
+		} else if(msg.msgid == EDM_CLOSE) {
+			ali("task closed");
+			man.close();
+			FDCHK_EV(fdn);
+		}
+		return 0;
+	});
+	task.runMain();
 }
