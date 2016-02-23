@@ -21,7 +21,10 @@ public:
 	virtual ~AsyncFile();
 	int open(const std::string& path, Lis lis);
 	void close();
-	void recycleBuf(std::unique_ptr<char[]> buf, size_t len);
+	void recycleBuf(std::unique_ptr<char[]> buf) {
+		mBuf = std::move(buf);
+	};
+	void reBufferData(std::unique_ptr<char[]> buf, size_t len);
 private:
 	FILE *mSt;
 	edft::EdEventFd mEvt;

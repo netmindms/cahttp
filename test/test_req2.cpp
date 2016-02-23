@@ -8,11 +8,15 @@
 #define LOG_LEVEL LOG_DEBUG
 
 #include <gtest/gtest.h>
+  #include <sys/types.h>
+       #include <sys/stat.h>
+       #include <unistd.h>
 #include <ednio/EdNio.h>
 #include "../cahttp/HttpReq.h"
 #include "../cahttp/flog.h"
 #include "../cahttp/CaHttpCommon.h"
 #include "../cahttp/ReqMan.h"
+#include "../cahttp/AsyncFile.h"
 #include "testutil.h"
 #include "test_common.h"
 using namespace cahttp;
@@ -245,7 +249,7 @@ TEST(req2, echo_manual) {
 					task.postExit();
 				}
 			});
-			auto r = req.writeData(data.data(), data.size());
+			auto r = req.sendContent(data.data(), data.size());
 			assert(r==0);
 		} else if(msg.msgid == EDM_CLOSE) {
 			req.close();
@@ -314,7 +318,7 @@ TEST(req2, echo_manual_tec) {
 					task.postExit();
 				}
 			});
-			auto r = req.writeData(data.data(), data.size());
+			auto r = req.sendContent(data.data(), data.size());
 			req.endData();
 			assert(r==0);
 		} else if(msg.msgid == EDM_CLOSE) {
@@ -392,7 +396,7 @@ TEST(req2, reuse) {
 					task.postExit();
 				}
 			});
-			req.writeData(data2.data(), data2.size());
+			req.sendContent(data2.data(), data2.size());
 			req.endData();
 		} else if(msg.msgid == EDM_TIMER) {
 			task.killTimer(1);
@@ -458,3 +462,102 @@ TEST(req2, reqman_premature_close) {
 	});
 	task.runMain();
 }
+
+
+
+
+
+TEST(req2, send_data) {
+	EdTask task;
+	HttpReq req;
+	string data = "echo send_data";
+	string recvdata;
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			req.setContentType(CAS::CT_APP_OCTET);
+			req.setContentLen(data.size());
+			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
+				if(event == HttpReq::ON_MSG) {
+					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
+				} else if(event == HttpReq::ON_DATA) {
+
+				} else if(event == HttpReq::ON_SEND) {
+					ali("on send event");
+					string s1="echo ";
+					string s2="send_data";
+					auto sret = req.sendData(s1.data(), s1.size());
+					assert(sret==SEND_RESULT::SEND_OK);
+					sret = req.sendData(s2.data(), s2.size());
+					assert(sret==SEND_RESULT::SEND_OK);
+					sret = req.sendData(data.data(), data.size());
+					assert(sret == SEND_RESULT::SEND_FAIL);
+
+				} else if(event == HttpReq::ON_END) {
+					ali("request end,...");
+					recvdata = req.fetchData();
+					ali("  recv data=%s", recvdata);
+					task.postExit();
+				}
+			});
+
+		} else if(msg.msgid == EDM_CLOSE) {
+			req.close();
+			ali("task closed");
+		}
+		return 0;
+	});
+	task.runMain();
+	ASSERT_STREQ(recvdata.c_str(), data.c_str());
+}
+
+
+
+TEST(req2, send_data_file) {
+	EdTask task;
+	HttpReq req;
+	struct stat statbuf;
+	AsyncFile afile;
+	stat(get_test_file_path().data(), &statbuf);
+	auto fsize = statbuf.st_size;
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			req.setContentType(CAS::CT_APP_OCTET);
+			req.setContentLen(fsize);
+			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
+				if(event == HttpReq::ON_MSG) {
+					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
+					afile.open(get_test_file_path(), [&](unique_ptr<char[]> databuf)->int{
+
+						return 0;
+					});
+				} else if(event == HttpReq::ON_DATA) {
+
+				} else if(event == HttpReq::ON_SEND) {
+					ali("on send event");
+					string s1="echo ";
+					string s2="send_data";
+					auto sret = req.sendData(s1.data(), s1.size());
+					assert(sret==SEND_RESULT::SEND_OK);
+					sret = req.sendData(s2.data(), s2.size());
+					assert(sret==SEND_RESULT::SEND_OK);
+					sret = req.sendData(data.data(), data.size());
+					assert(sret == SEND_RESULT::SEND_FAIL);
+
+				} else if(event == HttpReq::ON_END) {
+					ali("request end,...");
+					task.postExit();
+				}
+			});
+
+		} else if(msg.msgid == EDM_CLOSE) {
+			req.close();
+			ali("task closed");
+		}
+		return 0;
+	});
+	task.runMain();
+	ASSERT_STREQ(recvdata.c_str(), data.c_str());
+}
+

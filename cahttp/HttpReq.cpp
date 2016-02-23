@@ -457,23 +457,56 @@ void HttpReq::stackTeByteBuf(const char* ptr, size_t len, bool head, bool body, 
 	mBufList.front().reset(bf);
 }
 
-int HttpReq::sendData(const char* ptr, size_t len) {
-	if(mpCnn->isWritable()==true && mBufList.empty()==true) {
-		if(mStatus.te) {
-			string s;
-			s.reserve(len+20);
-			s = cahttpu::fmt::format("{:x}\r\n", len);
-			s.append(ptr, len);
-			s.append("\r\n");
-			auto wret = mpCnn->send(mTxHandle, s.data(), s.size());
-			return wret;
+SEND_RESULT HttpReq::sendData(const char* ptr, size_t len) {
+	if(mStatus.se) {
+		return SEND_FAIL;
+	}
+	if (!mStatus.te && (mSendDataCnt + (int64_t)len > mContentLen)) {
+		ale("### too much content size, content_size=%ld, cur_send_cnt=%ld, data_len=%ld", mContentLen, mSendDataCnt, len);
+		return SEND_FAIL;
+	}
+
+//	mSendDataCnt += len;
+//	if(!mStatus.te && mSendDataCnt >= mContentLen) {
+//		mStatus.se=1;
+//	}
+	SEND_RESULT sret;
+	if(mBufList.empty()) {
+		if(!mStatus.te) {
+			sret = mpCnn->send(mTxHandle, ptr, len);
 		} else {
-			auto wret = mpCnn->send(mTxHandle, ptr, len);
-			return wret;
+			// writing chunk head
+			char tmp[20];
+			auto n = sprintf(tmp, "%lx\r\n", (size_t) len);
+			sret = mpCnn->send(mTxHandle, tmp, n);
+			if(sret == SEND_RESULT::SEND_OK || sret == SEND_RESULT::SEND_PENDING) {
+				// write body
+				sret = mpCnn->send(mTxHandle, ptr, len);
+				if(sret == SEND_RESULT::SEND_OK || sret == SEND_RESULT::SEND_PENDING) {
+					// write tail;
+					sret = mpCnn->send(mTxHandle, "\r\n", 2);
+					if(sret != SEND_RESULT::SEND_OK && sret != SEND_RESULT::SEND_PENDING) {
+						stackTeByteBuf(ptr, len, false, false, true);
+					}
+				} else {
+					stackTeByteBuf(ptr, len, false, true, true);
+				}
+			} else {
+				stackTeByteBuf(ptr, len, true, true, true);
+			}
+		}
+
+		if (sret == SEND_RESULT::SEND_OK ) {
+			mSendDataCnt += len;
+			if(!mStatus.te && mSendDataCnt == mContentLen) {
+				mStatus.se=1;
+				mpCnn->endTxCh(mTxHandle); mTxHandle=0;
+			}
 		}
 	} else {
-		return 1;
+		sret = SEND_NEXT;
 	}
+	return sret;
 }
 
 #if 0
@@ -532,7 +565,7 @@ int HttpReq::request(http_method method, const char* pdata, size_t data_len, con
 
 	request(mReqMsg);
 	if(pdata && data_len>0) {
-		r=writeData(pdata, data_len);
+		r=sendContent(pdata, data_len);
 	}
 
 	return r;
@@ -561,7 +594,7 @@ err_exit:
 	return 1;
 }
 
-int HttpReq::writeData(const char* ptr, size_t len) {
+int HttpReq::sendContent(const char* ptr, size_t len) {
 	if(mStatus.se) {
 		return 1;
 	}
@@ -714,7 +747,7 @@ int HttpReq::request(http_method method, const std::string& url, const std::stri
 	mReqMsg.setContentType(ctype);
 	auto r = request(mReqMsg);
 	if(!r) {
-		r = writeData(data.data(), data.size());
+		r = sendContent(data.data(), data.size());
 	}
 	if(mStatus.te) {
 		endData();

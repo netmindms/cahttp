@@ -70,12 +70,12 @@ int main(int argc, char* argv[]) {
 //	::testing::GTEST_FLAG(filter) = "frame2.*";
 //	::testing::GTEST_FLAG(filter) = "pktbuf.*";
 //	::testing::GTEST_FLAG(filter) = "msg.content";
-	::testing::GTEST_FLAG(filter) = "req2.reqman_premature_close";
+//	::testing::GTEST_FLAG(filter) = "req2.reqman_premature_close";
 //	::testing::GTEST_FLAG(filter) = "req2.reqman";
 //	::testing::GTEST_FLAG(filter) = "req2.echo_manual_tec_zero";
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc";
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc_file";
-//	::testing::GTEST_FLAG(filter) = "req2.manualdata";
+	::testing::GTEST_FLAG(filter) = "req2.send_data";
 //	::testing::GTEST_FLAG(filter) = "etc.*";
 //	::testing::GTEST_FLAG(filter) = "svr2.*";
 

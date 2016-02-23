@@ -31,11 +31,19 @@ int AsyncFile::open(const std::string& path, Lis lis) {
 	}
 
 	mEvt.setOnListener([this](EdEventFd &efd, int cnt) {
-		auto *ptr = new char[mChkSize];
-		if(ptr) {
-			auto rcnt = fread(ptr, 1, mChkSize, mSt);
+		if(mBuf == nullptr) {
+			mBuf.reset( new char[mChkSize] );
+		}
+		if(mBuf) {
+			ssize_t rcnt;
+			if(mDataSize==0) {
+				rcnt = fread(mBuf.get(), 1, mChkSize, mSt);
+			} else {
+				rcnt = mDataSize;
+				mDataSize = 0;
+			}
 			if(rcnt>0) {
-				mLis(unique_ptr<char[]>(ptr), rcnt);
+				mLis(move(mBuf), rcnt);
 				mEvt.raise();
 			}
 		}
@@ -53,6 +61,11 @@ void AsyncFile::close() {
 		fclose(mSt);
 		mSt = nullptr;
 	}
+}
+
+void AsyncFile::reBufferData(std::unique_ptr<char[]> buf, size_t len) {
+	mBuf = move(buf);
+	mDataSize = len;
 }
 
 } // namespace cahttp

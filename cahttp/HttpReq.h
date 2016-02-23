@@ -60,12 +60,12 @@ public:
 
 
 	// return: 0:ok, other:fail
-	int writeData(const char* ptr, size_t len);
+	int sendContent(const char* ptr, size_t len);
 	int writeFile(const char* path);
 	int writeFile(const std::string& path) {
 		return writeFile(path.c_str());
 	};
-	int sendData(const char* ptr, size_t len);
+	SEND_RESULT sendData(const char* ptr, size_t len);
 	int sendPacket(const char* buf, size_t len);
 	int sendPacket(std::string&& s);
 	int getRespStatus();
