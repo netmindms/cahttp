@@ -59,9 +59,9 @@ int HttpReq::request(BaseMsg &msg) {
 		if(parser.port != "") {
 			s_port = stoi(parser.port);
 		}
-		ali("resolving server ip, host=%s", parser.hostName);
+		ald("resolving server ip, host=%s", parser.hostName);
 		s_ip = get_ip_from_hostname(parser.hostName);
-		ali("  ip=%s, port=%d", get_ipstr(mSvrIp), mSvrPort);
+		ald("  ip=%s, port=%d", get_ipstr(s_ip), s_port);
 	}
 
 	auto ret = mpCnn->connect(s_ip, s_port, 30000);
@@ -76,7 +76,7 @@ int HttpReq::request(BaseMsg &msg) {
 				return procOnData();
 			} else if(evt == BaseConnection::CH_E::CH_CLOSED) {
 				if(!mStatus.fin) {
-					ali("*** request early terminated");
+					alw("*** request early terminated");
 
 					mErr = ERR::E_EARLY_DISCONNECTED;
 					mStatus.fin = 1;
@@ -98,9 +98,9 @@ int HttpReq::request(BaseMsg &msg) {
 			if(evt == BaseConnection::CH_E::CH_WRITABLE) {
 				return procOnWritable();
 			} else if(evt == BaseConnection::CH_E::CH_CLOSED) {
-				ali("disconnected,...");
+				ald("disconnected,...");
 				if(!mStatus.fin) {
-					ali("*** request early terminated");
+					ald("*** request early terminated");
 					mErr = ERR::E_EARLY_DISCONNECTED;
 					mStatus.fin = 1;
 					mLis(ON_END);
@@ -237,7 +237,7 @@ int HttpReq::procOnWritable() {
 					break;
 				}
 			} else {
-				ali("*** fail writing chunk body, ...");
+				ald("*** fail writing chunk body, ...");
 				if(pktbuf->getType()) {
 					stackTeByteBuf(buf.second, buf.first, false, true, true);
 					pktbuf->consume();
@@ -290,7 +290,7 @@ int HttpReq::procOnMsg() {
 
 	return 0;
 //	if(mupRespMsg->getRespStatus() >= 200) {
-//		ali("final response message, status=%d", mupRespMsg->getRespStatus());
+//		ald("final response message, status=%d", mupRespMsg->getRespStatus());
 //		if(mupRespMsg->getContentLenInt()==0) {
 //			FS_FIN();
 //			mLis(ON_END);
@@ -401,9 +401,9 @@ int HttpReq::procOnData() {
 
 int HttpReq::procOnCnn(int status) {
 	if(status==0) {
-		ali("disconnected,...");
+		ald("disconnected,...");
 		if(!mStatus.fin) {
-			ali("*** request terminated prematurely");
+			ald("*** request terminated prematurely");
 			mStatus.fin = 1;
 			mLis(ON_END);
 			return 1;

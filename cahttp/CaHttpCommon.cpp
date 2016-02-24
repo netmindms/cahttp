@@ -191,7 +191,7 @@ vector<uint32_t> dns_lookup(const string& hostname) {
 string get_ipstr(uint32_t ip) {
 	in_addr in;
 	in.s_addr = ip;
-	return inet_ntoa(in);
+	return string(inet_ntoa(in));
 }
 
 uint32_t new_handle() {

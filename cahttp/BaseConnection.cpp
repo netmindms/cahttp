@@ -69,7 +69,7 @@ int BaseConnection::connect(uint32_t ip, int port, int timeout) {
 //			mNotiIf->OnWritable();
 			procWritable();
 		} else if(event == NETEV_DISCONNECTED) {
-			ali("*** disconnected...");
+			ald("*** disconnected...");
 			FSET_DISCNN();
 //			mNotiIf->OnCnn(0);
 			procClosed();
@@ -138,7 +138,7 @@ uint32_t BaseConnection::startSend(CnnIf* pif) {
 
 void BaseConnection::close() {
 	if(mSocket.getFd()>=0) {
-		ali("close socket, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
+		ald("close socket, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
 		mSocket.close();
 	}
 
@@ -192,7 +192,7 @@ int BaseConnection::procRead() {
 			return -2;
 		}
 	} else {
-		//ali("*** no read data");
+		//ald("*** no read data");
 	}
 	return 0;
 }
@@ -222,7 +222,7 @@ void BaseConnection::init_sock(bool svr, int fd) {
 			FSET_CNN();
 			if(mNotiIf) mNotiIf->OnWritable();
 		} else if(event == NETEV_DISCONNECTED) {
-			ali("*** disconnected...");
+			ald("*** disconnected...");
 			FSET_DISCNN();
 			if(mNotiIf) mNotiIf->OnCnn(0);
 		} else if(event == NETEV_READABLE) {
@@ -240,7 +240,7 @@ void BaseConnection::init_sock(bool svr, int fd) {
 	//			mNotiIf->OnWritable();
 				procWritable();
 			} else if(event == NETEV_DISCONNECTED) {
-				ali("*** sock disconnected...");
+				ald("*** sock disconnected...");
 				mCnnTimer.kill();
 				sck.close();
 				FSET_DISCNN();
@@ -286,7 +286,7 @@ void BaseConnection::endTxCh(uint32_t h) {
 }
 
 void BaseConnection::endRxCh(uint32_t h) {
-	ali("end rx ch=%d", h);
+	ald("end rx ch=%d", h);
 	for(auto itr=mRxChList.begin();itr != mRxChList.end(); itr++) {
 		if(itr->handle == h) {
 			mRxChList.erase(itr);

@@ -512,7 +512,7 @@ TEST(req2, send_data) {
 }
 
 
-
+#if 0
 TEST(req2, send_data_file) {
 	EdTask task;
 	HttpReq req;
@@ -528,10 +528,10 @@ TEST(req2, send_data_file) {
 			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
 				if(event == HttpReq::ON_MSG) {
 					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
-					afile.open(get_test_file_path(), [&](unique_ptr<char[]> databuf)->int{
-
-						return 0;
-					});
+//					afile.open(get_test_file_path(), [&](unique_ptr<char[]> databuf)->int{
+//
+//						return 0;
+//					});
 				} else if(event == HttpReq::ON_DATA) {
 
 				} else if(event == HttpReq::ON_SEND) {
@@ -560,4 +560,4 @@ TEST(req2, send_data_file) {
 	task.runMain();
 	ASSERT_STREQ(recvdata.c_str(), data.c_str());
 }
-
+#endif
