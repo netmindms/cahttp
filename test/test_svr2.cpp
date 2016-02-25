@@ -21,6 +21,32 @@ using namespace cahttp;
 using namespace edft;
 using namespace std;
 
+class EchoUrl: public ReUrlCtrl {
+	string mRecvStr;
+	void OnHttpReqMsg(BaseMsg& msg) override {
+		auto r = response(200, mRecvStr, CAS::CT_APP_OCTET);
+		assert(r==0);
+	};
+	void OnHttpReqData(string&& data) override {
+		mRecvStr += data;
+	}
+	void OnHttpEnd() override {
+		ald("echo req end.");
+	};
+};
+
+class ServerTask: public EdTask {
+	ReHttpServer mSvr;
+	int OnEventProc(EdMsg& msg) override {
+		if(msg.msgid == EDM_INIT) {
+
+			mSvr.setUrlReg<EchoUrl>(HTTP_POST, "/echo");
+			mSvr.start(0);
+		}
+		return 0;
+	}
+};
+
 
 TEST(svr2, svr) {
 //	ReHttpServer::test();
@@ -28,8 +54,8 @@ TEST(svr2, svr) {
 		string strBuf;
 		virtual void OnHttpReqMsg(BaseMsg& msg) override {
 			ali("on req message");
-			response_file(200, "/home/netmind/temp/h");
-//			response(200, "hello", CAS::CT_TEXT_PLAIN);
+//			response_file(200, "/home/netmind/temp/h");
+			response(200, "hello", CAS::CT_TEXT_PLAIN);
 //			response(200, nullptr, 10, CAS::CT_TEXT_PLAIN.data());
 		};
 		virtual void OnHttpReqData(std::string&& data) override {
@@ -47,7 +73,7 @@ TEST(svr2, svr) {
 	mTask.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			mSvr.setUrlReg<TestUrl>(HTTP_GET, "/test");
-			mSvr.setUrlReg<TestUrl>(HTTP_POST, "/test");
+			mSvr.setUrlReg<EchoUrl>(HTTP_POST, "/echo");
 			mSvr.start(0);
 		} else if(msg.msgid == EDM_CLOSE) {
 			mTimer.kill();

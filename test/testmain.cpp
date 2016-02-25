@@ -75,9 +75,9 @@ int main(int argc, char* argv[]) {
 //	::testing::GTEST_FLAG(filter) = "req2.echo_manual_tec_zero";
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc";
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc_file";
-	::testing::GTEST_FLAG(filter) = "req2.send_data";
+//	::testing::GTEST_FLAG(filter) = "req2.send_data";
 //	::testing::GTEST_FLAG(filter) = "etc.*";
-//	::testing::GTEST_FLAG(filter) = "svr2.*";
+	::testing::GTEST_FLAG(filter) = "svr2.*";
 
 
 	auto ret = RUN_ALL_TESTS();
