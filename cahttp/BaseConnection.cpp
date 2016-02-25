@@ -267,12 +267,18 @@ uint32_t BaseConnection::openTxCh(ChLis lis) {
 	return mHandleSeed;
 }
 
-uint32_t BaseConnection::openRxCh(ChLis lis) {
+uint32_t BaseConnection::openRxCh(ChLis lis, bool front) {
 	if(++mHandleSeed==0) mHandleSeed++;
-	mRxChList.emplace_back();
-	auto &c = mRxChList.back();
-	c.handle = mHandleSeed;
-	c.lis = lis;
+	_chlis *c;
+	if(!front) {
+		mRxChList.emplace_back();
+		c = &(mRxChList.back());
+	} else {
+		mRxChList.emplace_front();
+		c = &(mRxChList.front());
+	}
+	c->handle = mHandleSeed;
+	c->lis = lis;
 	return mHandleSeed;
 }
 

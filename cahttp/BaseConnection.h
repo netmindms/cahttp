@@ -18,6 +18,7 @@ namespace cahttp {
 
 class BaseConnection {
 	friend class HttpReq;
+	friend class ReHttpSvrCtx;
 public:
 	enum CH_E {
 		CH_CONNECTED,
@@ -74,7 +75,7 @@ public:
 //	virtual void OnRecvMsg(CaHttpMsg &msg);
 //	virtual void OnRecvData(std::string& data);
 	uint32_t openTxCh(ChLis lis);
-	uint32_t openRxCh(ChLis lis);
+	uint32_t openRxCh(ChLis lis, bool front=false);
 	void endTxCh(uint32_t h);
 	void endRxCh(uint32_t h);
 	BaseMsg* fetchMsg() {
