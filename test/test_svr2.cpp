@@ -21,16 +21,45 @@ using namespace cahttp;
 using namespace edft;
 using namespace std;
 
-class EchoUrl: public ReUrlCtrl {
+namespace _svr2 {
+class ServerTask;
+class SvrTestUrlCtr: public ReUrlCtrl {
+public:
+	SvrTestUrlCtr(ServerTask *ptask) {
+		mpSvrTask = ptask;
+	}
+	virtual ~SvrTestUrlCtr() {
+
+	}
+	virtual void OnHttpReqMsg(BaseMsg& msg) override {
+		ali("on http reqmsg");
+	};
+
+	virtual void OnHttpReqData(string&& data) override {
+		ali("req data: |%s|", data);
+	};
+	virtual void OnHttpEnd() override {
+		ali("on http end");
+	};
+protected:
+	ServerTask *mpSvrTask;
+};
+
+class EchoUrl: public SvrTestUrlCtr {
+public:
+	EchoUrl(ServerTask* ptask): SvrTestUrlCtr(ptask)  {
+		ali("echo url const");
+	}
 	string mRecvStr;
-	void OnHttpReqMsg(BaseMsg& msg) override {
+	virtual void OnHttpReqMsg(BaseMsg& msg) override {
+		ali("echo req msg...");
 		auto r = response(200, mRecvStr, CAS::CT_APP_OCTET);
 		assert(r==0);
 	};
-	void OnHttpReqData(string&& data) override {
+	virtual void OnHttpReqData(string&& data) override {
 		mRecvStr += data;
 	}
-	void OnHttpEnd() override {
+	virtual void OnHttpEnd() override {
 		ald("echo req end.");
 	};
 };
@@ -40,14 +69,22 @@ class ServerTask: public EdTask {
 	int OnEventProc(EdMsg& msg) override {
 		if(msg.msgid == EDM_INIT) {
 
-			mSvr.setUrlReg<EchoUrl>(HTTP_POST, "/echo");
+			mSvr.setUrlReg<EchoUrl>(HTTP_POST, "/echo", this);
 			mSvr.start(0);
+		} else if(msg.msgid == EDM_CLOSE) {
+			mSvr.close();
 		}
 		return 0;
 	}
 };
+}
 
+TEST(svr2, basic) {
+	_svr2::ServerTask svrTask;
+	svrTask.runMain();
+}
 
+#if 0
 TEST(svr2, svr) {
 //	ReHttpServer::test();
 	class TestUrl: public ReUrlCtrl {
@@ -84,3 +121,4 @@ TEST(svr2, svr) {
 	mTask.runMain();
 }
 
+#endif

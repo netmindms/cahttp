@@ -82,7 +82,9 @@ public:
 		return mRecvMsg.release();
 	};
 	std::string fetchData() {
-		return move(mRecvData);
+		std::string s;
+		s = move(mRecvData); mRecvData.clear();
+		return move(s);
 	}
 private:
 	HttpMsgFrame2 mMsgFrame;
