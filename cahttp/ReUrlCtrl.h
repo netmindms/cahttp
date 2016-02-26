@@ -24,6 +24,16 @@ class ReUrlCtrl {
 	friend class ReHttpServer;
 	friend class ReHttpSvrCtx;
 	friend class ReSvrCnn;
+private:
+	union status_t {
+		uint8_t val;
+		struct {
+			uint8_t used: 1;
+			uint8_t te: 1;
+			uint8_t se: 1; // sending end
+			uint8_t fin: 1; // req finished
+		};
+	};
 public:
 
 	ReUrlCtrl();
@@ -51,7 +61,8 @@ private:
 	uint32_t mHandle;
 	int64_t mSendDataCnt;
 	int64_t mRecvDataCnt;
-	uint8_t mStatusFlag;
+//	uint8_t mStatusFlag;
+	status_t mStatus;
 	int64_t mContentLen;
 	std::string mRecvDataBuf;
 

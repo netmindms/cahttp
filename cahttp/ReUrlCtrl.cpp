@@ -18,6 +18,7 @@
 #include "ext/nmdutil/strutil.h"
 #include "flog.h"
 
+#if 0
 enum {
 	FB_FIN = 0, FB_TE, // 1==Transfer-Encoding
 	FB_CE, // content end
@@ -34,6 +35,7 @@ enum {
 #define F_TE() F_GET(FB_TE)
 #define FS_TE() F_SET(FB_TE)
 #define FR_TE() F_RESET(FB_TE)
+#endif
 
 using namespace std;
 using namespace cahttpu;
@@ -44,7 +46,7 @@ ReUrlCtrl::ReUrlCtrl() {
 	mpReqMsg = nullptr;
 	mCnn = nullptr;
 	mHandle = 0;
-	mStatusFlag = 0;
+	mStatus.val = 0;
 	mSendDataCnt = 0;
 	mContentLen = 0;
 	mpServCnn = nullptr;
@@ -148,7 +150,7 @@ int ReUrlCtrl::response(BaseMsg& msg) {
 	auto sret = mpServCnn->send(mHandle, s.data(), s.size());
 	if(sret == SEND_RESULT::SEND_OK) {
 		if(mContentLen==0) {
-			FS_FIN();
+			mStatus.fin = 1;
 			mpServCnn->endCtrl(mHandle);
 		}
 		return 0;
@@ -210,7 +212,7 @@ int ReUrlCtrl::procOnWritable() {
 		auto buf = pktbuf->getBuf();
 		alv("get buf, size=%ld", buf.first);
 		if (buf.first > 0) {
-			if (F_TE() && pktbuf->getType() == 0) {
+			if (mStatus.te && pktbuf->getType() == 0) {
 				// writing chunk head
 				char tmp[20];
 				auto n = sprintf(tmp, "%lx\r\n", (size_t) buf.first);
@@ -226,7 +228,7 @@ int ReUrlCtrl::procOnWritable() {
 			}
 			ret = mpServCnn->send(mHandle, buf.second, buf.first);
 			if (ret <= 0) {
-				if (F_TE() && pktbuf->getType() == 0) {
+				if (mStatus.te && pktbuf->getType() == 0) {
 					// writing chunk tail
 					ret = mpServCnn->send(mHandle, "\r\n", 2);
 					if (ret == SEND_RESULT::SEND_NEXT || ret == SEND_RESULT::SEND_FAIL) {
@@ -245,7 +247,7 @@ int ReUrlCtrl::procOnWritable() {
 				}
 			} else {
 				ali("*** fail writing chunk body, ...");
-				if (F_TE() && pktbuf->getType() == 0) {
+				if (mStatus.te && pktbuf->getType() == 0) {
 					stackTeByteBuf(buf.second, buf.first, false, true, true);
 					pktbuf->consume();
 					usleep(3 * 1000 * 1000);
@@ -261,7 +263,7 @@ int ReUrlCtrl::procOnWritable() {
 	}
 	alv("  buf list count=%d", mBufList.size());
 	if (mBufList.empty() == true) {
-		if (F_GET(FB_CE)) {
+		if (mStatus.se) {
 			OnHttpEnd();
 		} else {
 			OnHttpSendBufReady();
@@ -302,7 +304,7 @@ void ReUrlCtrl::OnHttpReqData(std::string&& data) {
 }
 
 int ReUrlCtrl::writeContent(const char* ptr, size_t len) {
-	if (F_TE() && (mSendDataCnt + (int64_t)len > mContentLen)) {
+	if (!mStatus.te && (mSendDataCnt + (int64_t)len > mContentLen)) {
 		ale("### too much content size, content_size=%ld, cur_send_cnt=%ld, data_len=%ld", mContentLen, mSendDataCnt, len);
 		return 1;
 	}
@@ -311,7 +313,7 @@ int ReUrlCtrl::writeContent(const char* ptr, size_t len) {
 		auto sret = mpServCnn->send(mHandle, ptr, len);
 		if (sret == SEND_RESULT::SEND_OK) {
 			mSendDataCnt += len;
-			if(!F_TE() && mSendDataCnt >= mContentLen) {
+			if(!mStatus.te && mSendDataCnt >= mContentLen) {
 				assert(mSendDataCnt <= mContentLen);
 				FS_FIN();
 				mpServCnn->endCtrl(mHandle);
