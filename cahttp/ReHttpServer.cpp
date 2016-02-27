@@ -10,6 +10,7 @@
 
 #include "ReHttpSvrCtx.h"
 #include "ReHttpServer.h"
+#include "NotFoundUrl.h"
 #include "flog.h"
 
 namespace cahttp {
@@ -64,6 +65,9 @@ ReUrlCtrl* ReHttpServer::allocUrlCtrl(http_method method, const std::string& pat
 			}
 		}
 	}
+	if(!res) {
+		res = new NotFoundUrl;
+	}
 normal_exit:
 	return res;
 }
@@ -89,6 +93,11 @@ int ReHttpServer::setUrlReg(http_method method, const std::string& pattern, ReHt
 
 void ReHttpServer::close() {
 	mSocket.close();
+	if(mpLocalCtx) {
+		mpLocalCtx->close();
+		delete mpLocalCtx;
+		mpLocalCtx = nullptr;
+	}
 }
 
 //

@@ -27,25 +27,6 @@ public:
 	int init(uint32_t handle, uint fd, ReHttpSvrCtx& svr);
 	void close();
 private:
-#if 0
-	class ServRecvif: public BaseConnection::RecvIf {
-		friend class ReSvrCnn;
-		ServRecvif(ReSvrCnn& cnn);
-		virtual ~ServRecvif();
-		virtual int OnMsg(std::unique_ptr<BaseMsg> upmsg) override;
-		virtual int OnData(std::string&& data) override;
-		ReSvrCnn& mCnn;
-	};
-	class ServCnnIf: public BaseConnection::CnnIf {
-		friend class ReSvrCnn;
-		ServCnnIf(ReSvrCnn& cnn);
-		virtual ~ServCnnIf();
-		virtual int OnWritable();
-		virtual int OnCnn(int cnnstatus);
-		ReSvrCnn& mCnn;
-	};
-#endif
-
 	int procOnMsg();
 	int procOnData();
 	int procOnCnn(int cnnstatus);
@@ -69,10 +50,6 @@ private:
 	BaseConnection* mCnn;
 	ReHttpServer* mSvr;
 	ReHttpSvrCtx* mCtx;
-#if 0
-	ServRecvif mRecvIf;
-	ServCnnIf mCnnIf;
-#endif
 	ReUrlCtrl* mpCurCtrl;
 	edft::EdEventFd mEndEvt;
 	uint32_t mCtrlHandleSeed;

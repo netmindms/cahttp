@@ -66,6 +66,7 @@ private:
 	void init(ReHttpServer& svr);
 	void dummyCnn(uint32_t handle);
 	void clearCnnDummy();
+	void close();
 	ReHttpServer* getServer() {
 		return mpSvr;
 	}

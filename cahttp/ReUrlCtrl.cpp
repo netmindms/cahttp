@@ -315,7 +315,7 @@ int ReUrlCtrl::writeContent(const char* ptr, size_t len) {
 			mSendDataCnt += len;
 			if(!mStatus.te && mSendDataCnt >= mContentLen) {
 				assert(mSendDataCnt <= mContentLen);
-				FS_FIN();
+				mStatus.fin=1;//FS_FIN();
 				mpServCnn->endCtrl(mHandle);
 				return 0;
 			}
@@ -389,7 +389,7 @@ int ReUrlCtrl::response_file(int status_code, const char* path) {
 }
 
 bool ReUrlCtrl::isComplete() {
-	return F_FIN();
+	return mStatus.fin; //F_FIN();
 }
 
 } /* namespace cahttp */

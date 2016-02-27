@@ -1,5 +1,5 @@
 /*
-G * BaseConnection.cpp
+ * BaseConnection.cpp
  *
  *  Created on: Jan 26, 2016
  *      Author: netmind

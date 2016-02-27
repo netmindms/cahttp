@@ -23,10 +23,12 @@ using namespace std;
 
 namespace _svr2 {
 class ServerTask;
+
+
 class SvrTestUrlCtr: public ReUrlCtrl {
 public:
 	SvrTestUrlCtr(ServerTask *ptask) {
-		mpSvrTask = ptask;
+		mpSvrTask = (EdTask*)ptask;
 	}
 	virtual ~SvrTestUrlCtr() {
 
@@ -42,7 +44,7 @@ public:
 		ali("on http end");
 	};
 protected:
-	ServerTask *mpSvrTask;
+	EdTask *mpSvrTask;
 };
 
 class EchoUrl: public SvrTestUrlCtr {
@@ -64,19 +66,33 @@ public:
 	};
 };
 
+class TaskExit: public SvrTestUrlCtr {
+public:
+	TaskExit(ServerTask* ptask): SvrTestUrlCtr(ptask) {
+
+	};
+	void OnHttpReqMsg(BaseMsg& msg) override {
+		mpSvrTask->postExit();
+		response(200);
+	}
+};
+
+
 class ServerTask: public EdTask {
 	ReHttpServer mSvr;
 	int OnEventProc(EdMsg& msg) override {
 		if(msg.msgid == EDM_INIT) {
-
+			mSvr.setUrlReg<TaskExit>(HTTP_GET, "/exit", this);
 			mSvr.setUrlReg<EchoUrl>(HTTP_POST, "/echo", this);
 			mSvr.start(0);
 		} else if(msg.msgid == EDM_CLOSE) {
+			ald("task closing...");
 			mSvr.close();
 		}
 		return 0;
 	}
 };
+
 }
 
 TEST(svr2, basic) {

@@ -15,7 +15,7 @@
 #include "flog.h"
 namespace cahttp {
 
-ReSvrCnn::ReSvrCnn() /*: mRecvIf(*this), mCnnIf(*this) */ {
+ReSvrCnn::ReSvrCnn() {
 	mHandle = 0;
 	mSvr = nullptr;
 	mCnn = nullptr;
@@ -23,10 +23,15 @@ ReSvrCnn::ReSvrCnn() /*: mRecvIf(*this), mCnnIf(*this) */ {
 	mCtx = nullptr;
 	mCtrlHandleSeed=0;
 	mSendCtrlHandle=0;
+	mRxHandle=0;
+	mTxHandle=0;
 }
 
 ReSvrCnn::~ReSvrCnn() {
-	close();
+	assert(mHandle==0);
+	if(mCnn) {
+		delete mCnn;
+	}
 }
 
 int ReSvrCnn::init(uint32_t handle, uint fd, ReHttpSvrCtx& ctx) {
@@ -42,16 +47,19 @@ int ReSvrCnn::init(uint32_t handle, uint fd, ReHttpSvrCtx& ctx) {
 		return -1;
 	}
 
-//	mHandle = handle;
+	mHandle = handle;
 	mSvr = mCtx->getServer();
 	mCnn = new BaseConnection;
-#if 1
 	mRxHandle = mCnn->openRxCh([this](BaseConnection::CH_E evt) {
 		if(evt == BaseConnection::CH_E::CH_MSG) {
 			return procOnMsg();
 		} else if(evt == BaseConnection::CH_E::CH_DATA) {
 			return procOnData();
 		} else if(evt == BaseConnection::CH_E::CH_CLOSED) {
+			ald("rx chan closed, h=%ld", mRxHandle);
+			if(mTxHandle) { // close tx channel also
+				mCnn->endTxCh(mTxHandle); mTxHandle=0;
+			}
 			return procOnCnn(0);
 		}
 		assert(0);
@@ -61,15 +69,15 @@ int ReSvrCnn::init(uint32_t handle, uint fd, ReHttpSvrCtx& ctx) {
 		if(evt == BaseConnection::CH_E::CH_WRITABLE) {
 			return procOnWritable();
 		} else if(evt == BaseConnection::CH_E::CH_CLOSED) {
+			ald("tx chan closed, h=%ld", mTxHandle);
+			if(mRxHandle) { // close rx channel also
+				mCnn->endTxCh(mRxHandle); mRxHandle=0;
+			}
 			return procOnCnn(0);
 		}
 		assert(0);
 		return 1;
 	});
-#else
-	mCnn->setRecvIf(&mRecvIf);
-	mCnn->startSend(&mCnnIf);
-#endif
 	mCnn->openServer(fd);
 	return 0;
 }
@@ -85,12 +93,13 @@ int ReSvrCnn::procOnMsg() {
 			if(++mCtrlHandleSeed==0) mCtrlHandleSeed++;
 			mpCurCtrl = pctrl;
 			mCtrls.push_back(pctrl);
-//			auto hsend = cnn.startSend(pctrl->getCnnIf());
 			ald("new url handle=%d, ctrl cnt=%d", mCtrlHandleSeed, mCtrls.size());
 			auto *pmsg = upmsg.get();
 			pctrl->init(move(upmsg), *this, mCtrlHandleSeed);
 			if(mSendCtrlHandle==0) mSendCtrlHandle = mCtrlHandleSeed;
 			pctrl->OnHttpReqMsgHdr(*pmsg);
+		} else {
+			assert(0);
 		}
 		return 0;
 	} else {
@@ -122,30 +131,11 @@ void ReSvrCnn::clearDummy() {
 	mDummyCtrls.clear();
 }
 
-#if 0
-ReSvrCnn::ServRecvif::ServRecvif(ReSvrCnn& cnn): mCnn(cnn) {
-}
-
-ReSvrCnn::ServRecvif::~ServRecvif() {
-}
-
-int cahttp::ReSvrCnn::ServRecvif::OnMsg(std::unique_ptr<BaseMsg> upmsg) {
-	return mCnn.procOnMsg(move(upmsg));
-}
-
-
-
-int cahttp::ReSvrCnn::ServRecvif::OnData(std::string&& data) {
-	mCnn.procOnData(move(data));
-	return 0;
-}
-#endif
-
 void ReSvrCnn::close() {
 	if(mHandle) {
+		ald("close sever cnn, h=%d", mHandle);
 		assert(mCnn);
 		mCnn->close();
-		delete mCnn; mCnn=nullptr;
 		mEndEvt.close();
 		mCtx->dummyCnn(mHandle);
 		mHandle=0;
@@ -196,21 +186,6 @@ void ReSvrCnn::endCtrl(uint32_t handle) {
 	}
 }
 
-#if 0
-ReSvrCnn::ServCnnIf::ServCnnIf(ReSvrCnn& cnn): mCnn(cnn) {
-}
-
-ReSvrCnn::ServCnnIf::~ServCnnIf() {
-}
-
-int ReSvrCnn::ServCnnIf::OnWritable() {
-	return mCnn.procOnWritable();
-}
-
-int ReSvrCnn::ServCnnIf::OnCnn(int cnnstatus) {
-	return mCnn.procOnCnn(cnnstatus);
-}
-#endif
 
 void ReSvrCnn::procDummyCtrls() {
 	for(;mDummyCtrls.size()>0;) {
