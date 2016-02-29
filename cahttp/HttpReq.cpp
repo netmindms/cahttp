@@ -219,7 +219,7 @@ int HttpReq::procOnWritable() {
 				}
 			}
 			ret = mpCnn->send(mTxHandle, buf.second, buf.first);
-			if (ret == SEND_RESULT::SEND_OK || ret == SEND_RESULT::SEND_PENDING) {
+			if (ret == SR::eOk || ret == SR::ePending) {
 				if(pktbuf->getType()) {
 					// writing chunk tail
 					ret = mpCnn->send(mTxHandle, "\r\n", 2);
@@ -356,13 +356,13 @@ int HttpReq::sendHttpMsg(std::string&& msg) {
 	}
 //	ald("sending http msg: %s", msg);
 	auto ret = mpCnn->send(mTxHandle, msg.data(), msg.size());
-	if(ret == SEND_RESULT::SEND_OK || ret == SEND_RESULT::SEND_PENDING) {
+	if(ret == SR::eOk || ret == SR::ePending) {
 		if(mStatus.se) {
 			mpCnn->endRxCh(mTxHandle); mTxHandle=0;
 		} else {
 			mpCnn->reserveWrite();
 		}
-	} else if (ret == SEND_NEXT || ret == SEND_FAIL) {
+	} else if (ret == eNext || ret == eFail) {
 		// send fail
 		stackSendBuf(move(msg));
 	}
@@ -421,7 +421,7 @@ void HttpReq::endData() {
 	if(mStatus.te && !mStatus.se) {
 		if(mBufList.empty()==true) {
 			auto ret = mpCnn->send(mTxHandle, "0\r\n\r\n", 5);
-			if(ret==SEND_RESULT::SEND_OK || ret == SEND_RESULT::SEND_PENDING) {
+			if(ret==SR::eOk || ret == SR::ePending) {
 				return;
 			}
 		} else {
@@ -457,20 +457,20 @@ void HttpReq::stackTeByteBuf(const char* ptr, size_t len, bool head, bool body, 
 	mBufList.front().reset(bf);
 }
 
-SEND_RESULT HttpReq::sendData(const char* ptr, size_t len) {
+SR HttpReq::sendData(const char* ptr, size_t len) {
 	if(mStatus.se) {
-		return SEND_FAIL;
+		return eFail;
 	}
 	if (!mStatus.te && (mSendDataCnt + (int64_t)len > mContentLen)) {
 		ale("### too much content size, content_size=%ld, cur_send_cnt=%ld, data_len=%ld", mContentLen, mSendDataCnt, len);
-		return SEND_FAIL;
+		return eFail;
 	}
 
 //	mSendDataCnt += len;
 //	if(!mStatus.te && mSendDataCnt >= mContentLen) {
 //		mStatus.se=1;
 //	}
-	SEND_RESULT sret;
+	SR sret;
 	if(mBufList.empty()) {
 		if(!mStatus.te) {
 			sret = mpCnn->send(mTxHandle, ptr, len);
@@ -479,13 +479,13 @@ SEND_RESULT HttpReq::sendData(const char* ptr, size_t len) {
 			char tmp[20];
 			auto n = sprintf(tmp, "%lx\r\n", (size_t) len);
 			sret = mpCnn->send(mTxHandle, tmp, n);
-			if(sret == SEND_RESULT::SEND_OK || sret == SEND_RESULT::SEND_PENDING) {
+			if(sret == SR::eOk || sret == SR::ePending) {
 				// write body
 				sret = mpCnn->send(mTxHandle, ptr, len);
-				if(sret == SEND_RESULT::SEND_OK || sret == SEND_RESULT::SEND_PENDING) {
+				if(sret == SR::eOk || sret == SR::ePending) {
 					// write tail;
 					sret = mpCnn->send(mTxHandle, "\r\n", 2);
-					if(sret != SEND_RESULT::SEND_OK && sret != SEND_RESULT::SEND_PENDING) {
+					if(sret != SR::eOk && sret != SR::ePending) {
 						stackTeByteBuf(ptr, len, false, false, true);
 					}
 				} else {
@@ -496,7 +496,7 @@ SEND_RESULT HttpReq::sendData(const char* ptr, size_t len) {
 			}
 		}
 
-		if (sret == SEND_RESULT::SEND_OK ) {
+		if (sret == SR::eOk ) {
 			mSendDataCnt += len;
 			if(!mStatus.te && mSendDataCnt == mContentLen) {
 				mStatus.se=1;
@@ -504,7 +504,7 @@ SEND_RESULT HttpReq::sendData(const char* ptr, size_t len) {
 			}
 		}
 	} else {
-		sret = SEND_NEXT;
+		sret = eNext;
 	}
 	return sret;
 }
@@ -618,7 +618,7 @@ int HttpReq::sendContent(const char* ptr, size_t len) {
 	return 0;
 #else
 	if(mBufList.empty()) {
-		SEND_RESULT sret;
+		SR sret;
 		if(!mStatus.te) {
 			sret = mpCnn->send(mTxHandle, ptr, len);
 		} else {
@@ -626,13 +626,13 @@ int HttpReq::sendContent(const char* ptr, size_t len) {
 			char tmp[20];
 			auto n = sprintf(tmp, "%lx\r\n", (size_t) len);
 			sret = mpCnn->send(mTxHandle, tmp, n);
-			if(sret == SEND_RESULT::SEND_OK || sret == SEND_RESULT::SEND_PENDING) {
+			if(sret == SR::eOk || sret == SR::ePending) {
 				// write body
 				sret = mpCnn->send(mTxHandle, ptr, len);
-				if(sret == SEND_RESULT::SEND_OK || sret == SEND_RESULT::SEND_PENDING) {
+				if(sret == SR::eOk || sret == SR::ePending) {
 					// write tail;
 					sret = mpCnn->send(mTxHandle, "\r\n", 2);
-					if(sret != SEND_RESULT::SEND_OK && sret != SEND_RESULT::SEND_PENDING) {
+					if(sret != SR::eOk && sret != SR::ePending) {
 						stackTeByteBuf(ptr, len, false, false, true);
 					}
 				} else {
@@ -643,12 +643,12 @@ int HttpReq::sendContent(const char* ptr, size_t len) {
 			}
 		}
 
-		if (sret == SEND_RESULT::SEND_OK ) {
+		if (sret == SR::eOk ) {
 			if(!mStatus.te && mStatus.se) {
 				mpCnn->endTxCh(mTxHandle); mTxHandle=0;
 			}
 			ret = 0;
-		} else if (sret == SEND_RESULT::SEND_NEXT || sret == SEND_RESULT::SEND_FAIL) {
+		} else if (sret == SR::eNext || sret == SR::eFail) {
 			ret = -1;
 		}
 	} else {
@@ -721,12 +721,12 @@ int HttpReq::txContent(const char* ptr, size_t len) {
 
 	if (mBufList.empty() == true) {
 		auto sret = mpCnn->send(mTxHandle, ptr, len);
-		if (sret == SEND_RESULT::SEND_OK || sret == SEND_RESULT::SEND_PENDING) {
+		if (sret == SR::eOk || sret == SR::ePending) {
 			if(!mStatus.te && mStatus.se) {
 				mpCnn->endTxCh(mTxHandle); mTxHandle=0;
 			}
 			ret = 0;
-		} else if (sret == SEND_RESULT::SEND_NEXT) {
+		} else if (sret == SR::eNext) {
 			ret = -1;
 		}
 	} else {

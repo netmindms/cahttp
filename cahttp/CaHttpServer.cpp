@@ -44,9 +44,9 @@ int CaHttpServer::start(int task_num) {
 		init_tasks(task_num);
 	}
 	mTaskNum = task_num;
-	mLisSock.setOnListener([this](EdSocket &sock, int event) {
+	mLisSock.setOnListener([this](int event) {
 		if(event == SOCK_EVENT_INCOMING_ACCEPT) {
-			auto fd = sock.accept();
+			auto fd = mLisSock.accept();
 			if(mTaskNum>0) {
 				auto idx = (mJobOrder++)%mTaskNum;
 				mTasks[idx]->postMsg(ServTask::UM_NEWCNN, fd, 0);

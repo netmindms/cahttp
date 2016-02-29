@@ -83,7 +83,7 @@ int ServCnn::open(int fd, uint32_t handle, HttpServCnnCtx *pctx) {
 	mBufSize = 4096;
 	mRecvBuf = (char*) malloc(mBufSize);
 	mSock.openChild(fd);
-	mSock.setOnListener([this](EdSmartSocket &sock, int event) {
+	mSock.setOnListener([this](int event) {
 		if(event == NETEV_READABLE) {
 			ald("cnn readable, fd=%d", mSock.getFd());
 			procRead();
@@ -103,14 +103,14 @@ int ServCnn::open(int fd, uint32_t handle, HttpServCnnCtx *pctx) {
 		}
 	});
 
-	mCnnTimer.setOnListener([this](EdTimer &timer) {
+	mCnnTimer.setOnListener([this]() {
 		ali("*** service cnn timeout...");
 		if(mTimerUpdate) {
 			mTimerUpdate = 0;
 			return;
 		}
 		ali("****   no received data for timer interval..., disconnect,...");
-		timer.kill();
+		mCnnTimer.kill();
 		close();
 		mpCtx->freeCnn(mHandle);
 	});

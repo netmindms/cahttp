@@ -487,11 +487,11 @@ TEST(req2, send_data) {
 					string s1="echo ";
 					string s2="send_data";
 					auto sret = req.sendData(s1.data(), s1.size());
-					assert(sret==SEND_RESULT::SEND_OK);
+					assert(sret==SR::eOk);
 					sret = req.sendData(s2.data(), s2.size());
-					assert(sret==SEND_RESULT::SEND_OK);
+					assert(sret==SR::eOk);
 					sret = req.sendData(data.data(), data.size());
-					assert(sret == SEND_RESULT::SEND_FAIL);
+					assert(sret == SR::eFail);
 
 				} else if(event == HttpReq::ON_END) {
 					ali("request end,...");
@@ -539,11 +539,11 @@ TEST(req2, send_data_file) {
 					string s1="echo ";
 					string s2="send_data";
 					auto sret = req.sendData(s1.data(), s1.size());
-					assert(sret==SEND_RESULT::SEND_OK);
+					assert(sret==SR::eOk);
 					sret = req.sendData(s2.data(), s2.size());
-					assert(sret==SEND_RESULT::SEND_OK);
+					assert(sret==SR::eOk);
 					sret = req.sendData(data.data(), data.size());
-					assert(sret == SEND_RESULT::SEND_FAIL);
+					assert(sret == SR::eFail);
 
 				} else if(event == HttpReq::ON_END) {
 					ali("request end,...");

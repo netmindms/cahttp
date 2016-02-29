@@ -25,7 +25,7 @@ int RegExp::setPattern(const char* pattern) {
 	if(mpRegex) {
 		regfree(mpRegex); mpRegex=nullptr;
 	}
-	auto r = regcomp(&mRegex, (string("^")+pattern).c_str(), REG_EXTENDED);
+	auto r = regcomp(&mRegex, (string("^")+pattern+"$").c_str(), REG_EXTENDED);
 	if(!r) {
 		mpRegex = &mRegex;
 	}

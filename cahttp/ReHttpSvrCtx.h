@@ -9,16 +9,16 @@
 #define CAHTTP_REHTTPSVRCTX_H_
 
 #include "BaseConnection.h"
-#include "ReHttpServer.h"
 #include "ReSvrCnn.h"
 #include "ReUrlCtrl.h"
 
 namespace cahttp {
+class ReHttpServer;
 
 class ReHttpSvrCtx {
 	friend class ReHttpServer;
 	friend class ReSvrCnn;
-
+	friend class ReServTask;
 public:
 	ReHttpSvrCtx();
 	virtual ~ReHttpSvrCtx();

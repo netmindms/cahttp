@@ -40,8 +40,8 @@ public:
 	virtual void OnHttpReqData(string&& data) override {
 		ali("req data: |%s|", data);
 	};
-	virtual void OnHttpEnd() override {
-		ali("on http end");
+	virtual void OnHttpEnd(int err) override {
+		ali("on http end, err=%d", err);
 	};
 protected:
 	EdTask *mpSvrTask;
@@ -61,8 +61,8 @@ public:
 	virtual void OnHttpReqData(string&& data) override {
 		mRecvStr += data;
 	}
-	virtual void OnHttpEnd() override {
-		ald("echo req end.");
+	virtual void OnHttpEnd(int err) override {
+		ald("echo req end. err=%d", err);
 	};
 };
 
@@ -77,13 +77,128 @@ public:
 	}
 };
 
+class Hello: public SvrTestUrlCtr {
+public:
+	Hello(ServerTask* ptask): SvrTestUrlCtr(ptask) {
+
+	};
+	void OnHttpReqMsg(BaseMsg& msg) override {
+		ali("hello request");
+		response(200);
+	}
+	void OnHttpEnd(int err) override {
+		ali("hello end, err=%d", err);
+	}
+};
+
+
+class NoResponse: public SvrTestUrlCtr {
+public:
+	NoResponse(ServerTask* ptask): SvrTestUrlCtr(ptask) {
+
+	};
+	void OnHttpReqMsg(BaseMsg& msg) override {
+		ali("noreponse request");
+	}
+	void OnHttpEnd(int err) override {
+		ali("noreponse end, err=%d", err);
+	}
+};
+
+
+
+class DelayResponse: public SvrTestUrlCtr {
+public:
+	EdTimer mTimer;
+	DelayResponse(ServerTask* ptask): SvrTestUrlCtr(ptask) {
+
+	};
+	void OnHttpReqMsg(BaseMsg& msg) override {
+		ali("delay request");
+		mTimer.setOnListener([this]() {
+			mTimer.kill();
+			response(200, "1sec", CAS::CT_TEXT_PLAIN);
+		});
+		mTimer.set(1000);
+	}
+	void OnHttpEnd(int err) override {
+		ali("delay response end, err=%d", err);
+	}
+};
+
+class FileResponse: public SvrTestUrlCtr {
+public:
+	FileResponse(ServerTask* ptask): SvrTestUrlCtr(ptask) {
+
+	};
+	void OnHttpReqMsg(BaseMsg& msg) override {
+		ali("file request");
+		setTransferEncoding(true);
+		auto r = response_file(get_test_file_path().data());
+//		auto r = response_file("/home");
+//		auto r = response_file("/mnt/hgfs/share/bsp.tar.gz");
+		assert(!r);
+	}
+	void OnHttpEnd(int err) override {
+		ali("file end, err=%d", err);
+	}
+};
+
+
+class ProvisioningResp: public SvrTestUrlCtr {
+public:
+	EdTimer mTimer;
+	ProvisioningResp(ServerTask* ptask): SvrTestUrlCtr(ptask) {
+
+	};
+	void OnHttpReqMsg(BaseMsg& msg) override {
+		ali("provisioing request");
+		response(100);
+		mTimer.setOnListener([this]() {
+			mTimer.kill();
+			clearMsg();
+			response(200, "final response\n", CAS::CT_APP_OCTET);
+		});
+		mTimer.set(1000);
+	}
+	void OnHttpEnd(int err) override {
+		ali("provisioing req end, err=%d", err);
+	}
+};
+
+class ProvisioningDataResp: public SvrTestUrlCtr {
+public:
+	EdTimer mTimer;
+	ProvisioningDataResp(ServerTask* ptask): SvrTestUrlCtr(ptask) {
+
+	};
+	void OnHttpReqMsg(BaseMsg& msg) override {
+		ali("provisioning request with data");
+		response(100, "this is 100 message...\n", CAS::CT_APP_OCTET);
+		mTimer.setOnListener([this]() {
+			mTimer.kill();
+			clearMsg();
+			response(200, "final response\n", CAS::CT_APP_OCTET);
+		});
+		mTimer.set(1000);
+	}
+	void OnHttpEnd(int err) override {
+		ali("provisioing data req end, err=%d", err);
+	}
+};
 
 class ServerTask: public EdTask {
 	ReHttpServer mSvr;
 	int OnEventProc(EdMsg& msg) override {
 		if(msg.msgid == EDM_INIT) {
+			mSvr.setUrlReg<NoResponse>(HTTP_GET, "/noresponse", this);
+			mSvr.setUrlReg<Hello>(HTTP_GET, "/hello", this);
 			mSvr.setUrlReg<TaskExit>(HTTP_GET, "/exit", this);
 			mSvr.setUrlReg<EchoUrl>(HTTP_POST, "/echo", this);
+			mSvr.setUrlReg<FileResponse>(HTTP_GET, "/file", this);
+			mSvr.setUrlReg<DelayResponse>(HTTP_GET, "/delay", this);
+			mSvr.setUrlReg<ProvisioningResp>(HTTP_GET, "/provisioning", this);
+			mSvr.setUrlReg<ProvisioningDataResp>(HTTP_GET, "/provisioning_data", this);
 			mSvr.start(0);
 		} else if(msg.msgid == EDM_CLOSE) {
 			ald("task closing...");

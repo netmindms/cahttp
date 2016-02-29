@@ -34,7 +34,7 @@ private:
 	void reserveWrite() {
 		mCnn->reserveWrite();
 	}
-	SEND_RESULT send(uint32_t handle, const char* ptr, size_t len);
+	SR send(uint32_t handle, const char* ptr, size_t len);
 
 	inline BaseConnection* getConnection() {
 		return mCnn;
@@ -52,7 +52,7 @@ private:
 	ReHttpSvrCtx* mCtx;
 	ReUrlCtrl* mpCurCtrl;
 	edft::EdEventFd mEndEvt;
-	uint32_t mCtrlHandleSeed;
+	uint32_t mHandleSeed;
 	uint32_t mSendCtrlHandle;
 	uint32_t mTxHandle;
 	uint32_t mRxHandle;

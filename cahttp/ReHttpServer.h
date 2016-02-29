@@ -11,18 +11,22 @@
 #include <utility>
 #include <list>
 #include <functional>
-#include <gtest/gtest.h>
+#include <vector>
 
 #include "http_parser.h"
 #include "ReUrlCtrl.h"
 #include "RegExp.h"
+#include "ReServTask.h"
 
 namespace cahttp {
 
 class ReHttpSvrCtx;
+class ReServTask;
 
 class ReHttpServer {
+#ifdef UNIT_TEST
 	friend class svr2_svr_Test;
+#endif
 	friend class ReHttpSvrCtx;
 	friend class ReSvrCnn;
 public:
@@ -51,13 +55,22 @@ public:
 
 	int start(int tasknum);
 	void close();
+	void config(const char* param, const char* val);
 
 private:
+	int mTaskNum;
+	std::vector<ReServTask*> mTasks;
+	std::string mIp;
+	int mPort;
+	int mCfgCnnTimeout;
+	uint32_t mJobOrder;
+
 	std::list<std::pair<http_method, RegAllocList>> mMethodMap;
 	ReUrlCtrl* allocUrlCtrl(http_method method, const std::string& path);
-	edft::EdSocket mSocket;
+	edft::EdSocket mLisSocket;
 	ReHttpSvrCtx *mpLocalCtx;
 
+	void init_tasks(int task_num);
 #ifdef UNIT_TEST
 public:
 	static int test();

@@ -82,9 +82,9 @@ int BaseConnection::connect(uint32_t ip, int port, int timeout) {
 	});
 #endif
 
-	mCnnTimer.setOnListener([this, ip, port](EdTimer& timer) {
+	mCnnTimer.setOnListener([this, ip, port]() {
 		alw("*** connecting timeout... ip=%s, port=%d", cahttpu::Ip2CStr(ip), port);
-		timer.kill();
+		mCnnTimer.kill();
 		mSocket.close();
 		FSET_DISCNN();
 		procClosed();
@@ -94,22 +94,29 @@ int BaseConnection::connect(uint32_t ip, int port, int timeout) {
 
 }
 
-SEND_RESULT BaseConnection::send(uint32_t handle, const char* buf, size_t len) {
+SR BaseConnection::send(uint32_t handle, const char* buf, size_t len) {
 	if(FGET_CNN()==0) {
 		ald("*** not yet connected");
-		return SEND_RESULT::SEND_NEXT;
+		return SR::eNext;
+	}
+	if(mTxChList.empty()) {
+		assert(0);
+		return SR::eFail;
+	}
+	if( mTxChList.front().handle != handle) {
+		return SR::eNext;
 	}
 	if(mSocket.isWritable()) {
 		auto wret = mSocket.sendPacket(buf, len);
-		if(wret==edft::SEND_OK) return SEND_RESULT::SEND_OK;
-		else if(wret == edft::SEND_PENDING) return SEND_RESULT::SEND_PENDING;
+		if(wret==edft::SEND_OK) return SR::eOk;
+		else if(wret == edft::SEND_PENDING) return SR::ePending;
 		else {
 			ald("*** send fail in writable state, ret=%d", wret);
-			return SEND_RESULT::SEND_FAIL;
+			return SR::eFail;
 		}
 	} else {
 		ald("*** not writable");
-		return SEND_RESULT::SEND_NEXT;
+		return SR::eNext;
 	}
 }
 
@@ -172,8 +179,8 @@ int BaseConnection::procRead() {
 					if(mRxChList.size()) {
 						bexit = mRxChList.front().lis(CH_MSG);
 					} else {
-						ale("### no rx ch lisener");
-						assert(0);
+						assert(mDefRxLis);
+						bexit = mDefRxLis(CH_MSG);
 					}
 				} else if(fetch_status == mMsgFrame.FS_DATA) {
 					mRecvData.clear();
@@ -181,6 +188,9 @@ int BaseConnection::procRead() {
 //					bexit = mRecvIf->OnData(move(data));
 					if(mRxChList.size()) {
 						bexit = mRxChList.front().lis(CH_DATA);
+					} else {
+						assert(mDefRxLis);
+						bexit = mDefRxLis(CH_DATA);
 					}
 				} else if(fetch_status == mMsgFrame.FS_NONE) {
 					break;
@@ -232,7 +242,7 @@ void BaseConnection::init_sock(bool svr, int fd) {
 		}
 	});
 #endif
-	mSocket.setOnListener([this](EdSmartSocket& sck, int event) {
+	mSocket.setOnListener([this](int event) {
 			if(event == NETEV_CONNECTED) {
 				ald("sock connected");
 				mCnnTimer.kill();
@@ -242,7 +252,7 @@ void BaseConnection::init_sock(bool svr, int fd) {
 			} else if(event == NETEV_DISCONNECTED) {
 				ald("*** sock disconnected...");
 				mCnnTimer.kill();
-				sck.close();
+				mSocket.close();
 				FSET_DISCNN();
 	//			mNotiIf->OnCnn(0);
 				procClosed();
@@ -267,27 +277,27 @@ uint32_t BaseConnection::openTxCh(ChLis lis) {
 	return mHandleSeed;
 }
 
-uint32_t BaseConnection::openRxCh(ChLis lis, bool front) {
+uint32_t BaseConnection::openRxCh(ChLis lis) {
 	if(++mHandleSeed==0) mHandleSeed++;
 	_chlis *c;
-	if(!front) {
-		mRxChList.emplace_back();
-		c = &(mRxChList.back());
-	} else {
-		mRxChList.emplace_front();
-		c = &(mRxChList.front());
-	}
+	mRxChList.emplace_back();
+	c = &(mRxChList.back());
 	c->handle = mHandleSeed;
 	c->lis = lis;
 	return mHandleSeed;
 }
 
 void BaseConnection::endTxCh(uint32_t h) {
+	assert(mTxChList.size()>0 && mTxChList.front().handle==h);
 	for(auto itr=mTxChList.begin();itr != mTxChList.end(); itr++) {
 		if(itr->handle == h) {
 			mTxChList.erase(itr);
 			break;
 		}
+	}
+	if(mTxChList.size()) {
+//		reserveWrite();
+		procWritable();
 	}
 }
 
@@ -319,6 +329,14 @@ int BaseConnection::procWritable() {
 
 int BaseConnection::procClosed() {
 	std::list<_chlis> dummy;
+	if(mRxChList.size()) {
+		dummy = move(mRxChList);
+		assert(mRxChList.empty());
+		for(auto &c : dummy) {
+			c.lis(CH_CLOSED);
+		}
+		dummy.clear();
+	}
 	if(mTxChList.size()) {
 		dummy = move(mTxChList);
 		assert(mTxChList.empty());
@@ -328,14 +346,7 @@ int BaseConnection::procClosed() {
 		dummy.clear();
 	}
 
-	if(mRxChList.size()) {
-		dummy = move(mRxChList);
-		assert(mRxChList.empty());
-		for(auto &c : dummy) {
-			c.lis(CH_CLOSED);
-		}
-		dummy.clear();
-	}
+	if(mDefRxLis) mDefRxLis(CH_CLOSED);
 	return 0;
 }
 

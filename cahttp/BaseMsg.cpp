@@ -199,9 +199,10 @@ int64_t BaseMsg::getContentLen() {
 }
 
 void BaseMsg::setContentLen(int64_t len) {
+	setTransferEncoding(false);
+	setHdr(CAS::HS_CONTENT_LEN, std::to_string(len));
 	mStatus.c_len = 1;
 	mContentLen = len;
-	setHdr(CAS::HS_CONTENT_LEN, std::to_string(len));
 }
 
 bool BaseMsg::getTransferEncoding() {

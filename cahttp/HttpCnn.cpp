@@ -28,7 +28,7 @@ HttpCnn::~HttpCnn() {
 }
 
 void HttpCnn::initSock() {
-	mSock.setOnListener([this](EdSmartSocket &sock, int event) {
+	mSock.setOnListener([this](int event) {
 		if(event==NETEV_CONNECTED) {
 			ald("connected...");
 			mIsConnected = true;
@@ -39,7 +39,7 @@ void HttpCnn::initSock() {
 		}
 		else if(event == NETEV_DISCONNECTED) {
 			ali("disconnected...");
-			sock.close();
+			mSock.close();
 			if(mIsConnected==false) {
 				mError = -100;
 			}
@@ -143,7 +143,7 @@ void HttpCnn::starttx() {
 
 void HttpCnn::release(bool force) {
 	if (force == false) {
-		mCnnTimer.setOnListener([this](EdTimer &timer) {
+		mCnnTimer.setOnListener([this]() {
 			ali("conection idle timeout... connection free");
 			mCnnTimer.kill();
 			close();

@@ -209,8 +209,8 @@ public:
 			return;
 		}
 
-		mTimer.setOnListener([this](EdTimer &timer) {
-			timer.kill();
+		mTimer.setOnListener([this]() {
+			mTimer.kill();
 			response(200, "delayed-resp", "plain/text");
 		});
 		mTimer.set(delay);
@@ -319,13 +319,13 @@ class ManualPeriodicSendUrl: public CaHttpUrlCtrl {
 		mStrBuf = "manual-periodic-send";
 		setRespContent(nullptr, mStrBuf.size());
 		response(200);
-		mTimer.setOnListener([this](EdTimer &timer) {
+		mTimer.setOnListener([this]() {
 			if(mStrBuf.size()>0) {
 				auto c = mStrBuf.substr(0, 3);
 				mStrBuf.erase(0, 3);
 				sendData(c.data(), c.size());
 			} else {
-				timer.kill();
+				mTimer.kill();
 			}
 		});
 		mTimer.set(1000);
@@ -645,17 +645,17 @@ TEST(server, pipeline) {
 	size_t p1, p2;
 	task.setOnListener([&](EdMsg &msg) -> int {
 		if(msg.msgid == EDM_INIT) {
-			clsock.setOnListener([&](EdSocket &sock, int event) {
+			clsock.setOnListener([&](int event) {
 				if(event == SOCK_EVENT_CONNECTED) {
 					string dm ="GET /delayed-resp?delay=1000 HTTP/1.1\r\n\r\n";
 					string as = "GET /auto-send HTTP/1.1\r\n\r\n";
 					string ts = dm+as;
-					sock.send(ts.data(), ts.size());
+					clsock.send(ts.data(), ts.size());
 				} else if(event == SOCK_EVENT_DISCONNECTED) {
 					ASSERT_EQ(1, 0);
 				} else if(event == SOCK_EVENT_READ) {
 					char buf[500];
-					auto rcnt = sock.recv(buf, 100);
+					auto rcnt = clsock.recv(buf, 100);
 					if(rcnt>0) resp.append(buf, rcnt);
 				}
 			});

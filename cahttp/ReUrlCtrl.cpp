@@ -1,4 +1,3 @@
-#include "FilePacketBuf.h"
 
 /*
  * ReUrlCtrl.cpp
@@ -7,6 +6,12 @@
  *      Author: netmind
  */
 #define LOG_LEVEL LOG_DEBUG
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include "FilePacketBuf.h"
 #include "BytePacketBuf.h"
 #include "StringPacketBuf.h"
 
@@ -18,24 +23,11 @@
 #include "ext/nmdutil/strutil.h"
 #include "flog.h"
 
-#if 0
-enum {
-	FB_FIN = 0, FB_TE, // 1==Transfer-Encoding
-	FB_CE, // content end
-};
 
-#define F_GET(A) BIT_TEST(mStatusFlag, A)
-#define F_SET(A) BIT_SET(mStatusFlag, A)
-#define F_RESET(A) BIT_RESET(mStatusFlag, A)
-
-#define F_FIN() F_GET(FB_FIN)
-#define FS_FIN() F_SET(FB_FIN)
-#define FR_FIN() F_RESET(FB_FIN)
-
-#define F_TE() F_GET(FB_TE)
-#define FS_TE() F_SET(FB_TE)
-#define FR_TE() F_RESET(FB_TE)
-#endif
+#define cln(fmt, ...) aln("h:%03d " fmt , mHandle, ## __VA_ARGS__)
+#define cli(fmt, ...) ali("h:%03d " fmt , mHandle, ## __VA_ARGS__)
+#define cld(fmt, ...) ald("h:%03d " fmt , mHandle, ## __VA_ARGS__)
+#define clv(fmt, ...) alv("h:%03d " fmt , mHandle, ## __VA_ARGS__)
 
 using namespace std;
 using namespace cahttpu;
@@ -43,20 +35,20 @@ using namespace cahttpu;
 namespace cahttp {
 
 ReUrlCtrl::ReUrlCtrl() {
-	mpReqMsg = nullptr;
-	mCnn = nullptr;
+	mpCnn = nullptr;
 	mHandle = 0;
 	mStatus.val = 0;
 	mSendDataCnt = 0;
 	mContentLen = 0;
 	mpServCnn = nullptr;
 	mRecvDataCnt = 0;
+	mRxChannel=0;
 }
 
 ReUrlCtrl::~ReUrlCtrl() {
-	if (mpReqMsg) {
-		delete mpReqMsg;
-	}
+//	if (mpReqMsg) {
+//		delete mpReqMsg;
+//	}
 }
 
 std::vector<std::string>& cahttp::ReUrlCtrl::getPathParams() {
@@ -71,39 +63,123 @@ void ReUrlCtrl::OnHttpReqMsg(BaseMsg& msg) {
 	ald("on req msg");
 }
 
-void ReUrlCtrl::OnHttpEnd() {
+void ReUrlCtrl::OnHttpEnd(int err) {
 	ald("on end...");
 }
 
-int ReUrlCtrl::send(const char* ptr, size_t len) {
-	auto wret = mpServCnn->send(mHandle, ptr, len);
-	return wret;
-}
-
 void ReUrlCtrl::init(upBaseMsg upmsg, ReSvrCnn& cnn, uint32_t hsend) {
-	mpReqMsg = upmsg.release();
+	mupReqMsg = move(upmsg);
 	mpServCnn = &cnn;
-	mCnn = mpServCnn->getConnection();
+	mpCnn = mpServCnn->getConnection();
 	mHandle = hsend;
-//	mEndEvent.setOnListener([this](edft::EdEventFd &efd, int cnt) {
-//		efd.close();
-//		OnEnd();
-//		mpServCnn->urlDummy(mHandle);
-//	});
+	cld("new url ctrl, path=%s", mupReqMsg->getUrl());
+
+	mRxChannel = mpCnn->openRxCh([this](BaseConnection::CH_E evt){
+		if(evt == BaseConnection::CH_DATA) {
+			procOnData(mpCnn->fetchData());
+		} else if(evt == BaseConnection::CH_CLOSED) {
+			mRxChannel = 0;
+			mStatus.err = 1;
+			mMsgTx.close();
+		} else {
+			ale("### not expected event=%d", (int)evt);
+			assert(0);
+		}
+		return 0;
+	});
+	cld("open rx channel=%d", mRxChannel);
+
+	mMsgTx.open(*mpCnn, true, [this](MsgTransmitter::TR evt) {
+		switch(evt) {
+		case MsgTransmitter::eSendOk:
+			cld("response send complete.");
+			if(mRxChannel)  {
+				mpCnn->endRxCh(mRxChannel);
+				mRxChannel = 0;
+			}
+			mStatus.fin = 1;
+			mpServCnn->endCtrl(mHandle);
+			mMsgTx.close();
+			break;
+		case MsgTransmitter::eDataNeeded:
+			clv("data needed");
+			OnHttpSendBufReady();
+			break;
+		case MsgTransmitter::eSendFail:
+			cln("*** response send fail");
+			mStatus.err = 1;
+			mpServCnn->endCtrl(mHandle);
+			mMsgTx.close();
+			break;
+		default:
+			assert(0);
+			break;
+
+		}
+	});
+	mStatus.used = 1;
+	cld("open msg transmitter, channel=%d", mMsgTx.getTxChannel());
+	OnHttpReqMsgHdr(*mupReqMsg.get());
 }
 
 #if 1
 int ReUrlCtrl::response(int status_code, const char *pdata, size_t data_len, const char* ctype) {
-	BaseMsg msg;
-	setBasicHeader(msg, 200);
-	msg.setContentLen(data_len);
-	msg.setContentType(ctype);
-	response(msg);
-	if(pdata) {
-		auto r = writeContent(pdata, data_len);
+	setBasicHeader(mRespMsg, 200);
+	mRespMsg.setContentLen(data_len);
+	if(!mRespMsg.getTransferEncoding()) {
+		mRespMsg.setContentType(ctype);
+	}
+	auto r = response(mRespMsg);
+	if(!r) {
+		if(pdata) {
+			auto r = mMsgTx.sendContent(pdata, data_len);
+			return r;
+		}
+	}
+	return r;
+}
+
+
+int ReUrlCtrl::response(int status_code) {
+	setBasicHeader(mRespMsg, status_code);
+	if(mRespMsg.getTransferEncoding()==false) {
+		mRespMsg.setContentLen(0);
+	}
+	return response(mRespMsg);
+}
+
+int ReUrlCtrl::response(int status_code, const std::string& content, const std::string& ctype) {
+	setBasicHeader(mRespMsg, status_code);
+	mRespMsg.setContentType(ctype);
+	if(mRespMsg.getTransferEncoding()==false) {
+		mRespMsg.setContentLen(content.size());
+	}
+	auto r = response(mRespMsg);
+	if (r) {
 		return r;
 	}
-	return 0;
+//	return writeContent(content.data(), content.size());
+	return mMsgTx.sendContent(content);
+}
+
+int ReUrlCtrl::response_file(const char* path) {
+	struct stat finfo;
+	auto r = stat(path, &finfo);
+	if(!r && finfo.st_size>0 && S_ISREG(finfo.st_mode) && !S_ISDIR(finfo.st_mode)) {
+		int status_code=200;
+		setBasicHeader(mRespMsg, status_code);
+		if(mRespMsg.getTransferEncoding()==false) {
+			mRespMsg.setContentLen(finfo.st_size);
+		}
+		mRespMsg.setContentType(CAS::CT_APP_OCTET);
+		response(mRespMsg);
+		auto r = mMsgTx.sendContentFile(path);
+		return r;
+	} else {
+		aln("*** invalid file=%s", path);
+		mRespMsg.setContentLen(0);
+		return response(404);
+	}
 }
 
 #else
@@ -144,53 +220,58 @@ int ReUrlCtrl::response(int status_code, const char *pdata, size_t data_len, con
 #endif
 
 int ReUrlCtrl::response(BaseMsg& msg) {
+#if 1
+	cli("response: status=%d, content_len=%ld", msg.getRespStatus(), msg.getContentLen());
+	auto r = mMsgTx.sendMsg(msg);
+	msg.clear();
+	return r;
+#else
 	mSendDataCnt = 0;
+	mStatus.te = msg.getTransferEncoding();
 	mContentLen = msg.getContentLen();
 	auto s = msg.serialize();
-	auto sret = mpServCnn->send(mHandle, s.data(), s.size());
-	if(sret == SEND_RESULT::SEND_OK) {
-		if(mContentLen==0) {
+	auto sret = mpCnn->send(mTxChannel, s.data(), s.size());
+	if(sret == SR::eOk) {
+		if(!mStatus.te && mContentLen==0) {
+			mStatus.se = 1;
 			mStatus.fin = 1;
 			mpServCnn->endCtrl(mHandle);
 		}
 		return 0;
-	} else	if (sret == SEND_RESULT::SEND_NEXT) {
-		stackSendBuf(move(s));
+	} else	if (sret == SR::eNext) {
+		stackSendBuf(move(s), 0);
 		return 0;
-	} else if (sret == SEND_RESULT::SEND_PENDING) {
+	} else if (sret == SR::ePending) {
 		return 0;
 	} else {
 		ale("### response error");
 		return 1;
 	}
+	return 0;
+#endif
+}
 
+int ReUrlCtrl::procOnData(std::string&& data) {
+	alv("proc on data, size=%ld", data.size());
+	if(data.size()>0) {
+		OnHttpReqData(move(data));
+	} else if(data.size()==0){
+		ald("empty data, request message end.");
+		mpCnn->endRxCh(mRxChannel); mRxChannel=0;
+		OnHttpReqMsg(* mupReqMsg.get());
+	}
 	return 0;
 }
 
-int ReUrlCtrl::response(int status_code) {
-	BaseMsg msg;
-	setBasicHeader(msg, status_code);
-	msg.setContentLen(0);
-	return response(msg);
-}
 
-int ReUrlCtrl::response(int status_code, const std::string& content, const std::string& ctype) {
-	BaseMsg msg;
-	setBasicHeader(msg, status_code);
-	msg.setContentType(ctype);
-	msg.setContentLen(content.size());
-	auto r = response(msg);
-	if (r) {
-		return r;
-	}
-	return writeContent(content.data(), content.size());
-}
+
+#if 0
 
 int ReUrlCtrl::sendHttpMsg(std::string&& msg) {
 	assert(msg.size() > 0);
 //	ald("sending http msg: %s", msg);
 	auto ret = mpServCnn->send(mHandle, msg.data(), msg.size());
-	if (ret == SEND_RESULT::SEND_NEXT) {
+	if (ret == SR::eNext) {
 		// send next
 		auto *pkt = new StringPacketBuf;
 		pkt->setType(1);
@@ -199,28 +280,27 @@ int ReUrlCtrl::sendHttpMsg(std::string&& msg) {
 		mBufList.front().reset(pkt);
 		return -1;
 	} else {
-		mCnn->reserveWrite();
+		mpCnn->reserveWrite();
 		return 0;
 	}
 }
-
 int ReUrlCtrl::procOnWritable() {
 	ali("on writable");
-	SEND_RESULT ret;
+	SR ret;
 	for (; mBufList.empty() == false;) {
 		auto *pktbuf = mBufList.front().get();
 		auto buf = pktbuf->getBuf();
 		alv("get buf, size=%ld", buf.first);
 		if (buf.first > 0) {
-			if (mStatus.te && pktbuf->getType() == 0) {
+			if (mStatus.te && pktbuf->getType() == 1) {
 				// writing chunk head
 				char tmp[20];
 				auto n = sprintf(tmp, "%lx\r\n", (size_t) buf.first);
 				ret = mpServCnn->send(mHandle, tmp, n);
-				if (ret == SEND_RESULT::SEND_NEXT || ret == SEND_RESULT::SEND_FAIL) {
+				if (ret == SR::eNext || ret == SR::eFail) {
 //					assert(ret == SEND_RESULT::SEND_FAIL);
 					ald("*** chunk length write error");
-					stackTeByteBuf(buf.second, buf.first, true, true, true);
+					stackTeByteBuf(buf.second, buf.first, true, true, true, true);
 					pktbuf->consume();
 					goto END_SEND;
 					break;
@@ -228,27 +308,27 @@ int ReUrlCtrl::procOnWritable() {
 			}
 			ret = mpServCnn->send(mHandle, buf.second, buf.first);
 			if (ret <= 0) {
-				if (mStatus.te && pktbuf->getType() == 0) {
+				if (mStatus.te && pktbuf->getType() == 1) {
 					// writing chunk tail
 					ret = mpServCnn->send(mHandle, "\r\n", 2);
-					if (ret == SEND_RESULT::SEND_NEXT || ret == SEND_RESULT::SEND_FAIL) {
-						assert(ret == SEND_RESULT::SEND_FAIL);
+					if (ret == SR::eNext || ret == SR::eFail) {
+						assert(ret == SR::eFail);
 						ald("*** fail writing chunk ending line");
-						stackTeByteBuf(nullptr, 0, false, false, true);
+						stackTeByteBuf(nullptr, 0, false, false, true, true);
 						pktbuf->consume();
 						goto END_SEND;
 						break;
 					}
 				}
 				pktbuf->consume();
-				if (ret == SEND_RESULT::SEND_PENDING) {
+				if (ret == SR::ePending) {
 					goto END_SEND;
 					break;
 				}
 			} else {
 				ali("*** fail writing chunk body, ...");
-				if (mStatus.te && pktbuf->getType() == 0) {
-					stackTeByteBuf(buf.second, buf.first, false, true, true);
+				if (mStatus.te && pktbuf->getType() == 1) {
+					stackTeByteBuf(buf.second, buf.first, false, true, true, true);
 					pktbuf->consume();
 					usleep(3 * 1000 * 1000);
 					goto END_SEND;
@@ -273,13 +353,9 @@ int ReUrlCtrl::procOnWritable() {
 	return 0;
 }
 
-void ReUrlCtrl::OnHttpSendBufReady() {
-}
-
-
-void ReUrlCtrl::stackTeByteBuf(const char* ptr, size_t len, bool head, bool body, bool tail) {
+void ReUrlCtrl::stackTeByteBuf(const char* ptr, size_t len, bool head, bool body, bool tail, bool front) {
 	auto *bf = new BytePacketBuf;
-	bf->setType(2);
+	bf->setType(0);
 	bf->allocBuf(len + 20 + 4);
 
 	if (head) {
@@ -296,13 +372,85 @@ void ReUrlCtrl::stackTeByteBuf(const char* ptr, size_t len, bool head, bool body
 		bf->addData("\r\n", 2);
 	}
 
-	mBufList.emplace_front();
-	mBufList.front().reset(bf);
+	if(front) {
+		mBufList.emplace_front();
+		mBufList.front().reset(bf);
+	} else {
+		mBufList.emplace_back();
+		mBufList.back().reset(bf);
+	}
 }
-void ReUrlCtrl::OnHttpReqData(std::string&& data) {
 
+SR ReUrlCtrl::send(const char* ptr, size_t len, bool buffering) {
+	if(mStatus.se) {
+		return eFail;
+	} else if(mBufList.size()) {
+		if(buffering) {
+			stackSendBuf(ptr, len, mStatus.te);
+			mSendDataCnt += len;
+
+			return ePending;
+		} else {
+			return eNext;
+		}
+	}
+
+	SR ret;
+	if(!mStatus.te) {
+		ret = mpCnn->send(mTxChannel, ptr, len);
+		if(ret == SR::eOk || SR::ePending) {
+			mSendDataCnt += len	;
+			if(mSendDataCnt == mContentLen) {
+				mStatus.se = 1;
+			}
+		}
+	} else {
+		char tmp[20];
+		auto n = sprintf(tmp, "%lx\r\n", (size_t) len);
+		ret = mpCnn->send(mTxChannel, tmp, n);
+		if(ret == SR::eOk) {
+			ret = mpCnn->send(mTxChannel, ptr, len);
+			if(ret == SR::eOk) {
+				ret = mpCnn->send(mTxChannel, "\r\n", 2);
+				if(ret == SR::eNext) {
+					stackTeByteBuf(ptr, len, false, false, true	, false);
+				}
+			} else if(ret == SR::eNext) {
+				stackTeByteBuf(ptr, len, false, true, true, false);
+			}
+		} else if( ret == SR::eNext) {
+			stackTeByteBuf(ptr, len, true, true ,true, false);
+		}
+	}
+	return ret;
 }
 
+void ReUrlCtrl::stackSendBuf(std::string&& s, int type) {
+	auto *pbuf = new StringPacketBuf;
+	pbuf->setType(type);
+	pbuf->setString(move(s));
+	mBufList.emplace_back(pbuf);
+}
+
+void ReUrlCtrl::stackSendBuf(const char* ptr, size_t len, int type) {
+	auto *pbuf = new BytePacketBuf;
+	pbuf->setType(type);
+	pbuf->setData(ptr, len);
+	mBufList.emplace_back(pbuf);
+}
+
+void ReUrlCtrl::endData() {
+	if(mStatus.te && !mStatus.se) {
+		if(mBufList.empty()==true) {
+			mStatus.se = 1;
+			auto ret = mpCnn->send(mTxChannel, "0\r\n\r\n", 5);
+			if(ret==SR::eOk || ret == SR::ePending) {
+				return;
+			}
+		}
+		stackSendBuf("0\r\n\r\n", 5, 0);
+	}
+}
 int ReUrlCtrl::writeContent(const char* ptr, size_t len) {
 	if (!mStatus.te && (mSendDataCnt + (int64_t)len > mContentLen)) {
 		ale("### too much content size, content_size=%ld, cur_send_cnt=%ld, data_len=%ld", mContentLen, mSendDataCnt, len);
@@ -311,7 +459,7 @@ int ReUrlCtrl::writeContent(const char* ptr, size_t len) {
 
 	if (mBufList.empty() == true) {
 		auto sret = mpServCnn->send(mHandle, ptr, len);
-		if (sret == SEND_RESULT::SEND_OK) {
+		if (sret == SR::eOk) {
 			mSendDataCnt += len;
 			if(!mStatus.te && mSendDataCnt >= mContentLen) {
 				assert(mSendDataCnt <= mContentLen);
@@ -320,50 +468,53 @@ int ReUrlCtrl::writeContent(const char* ptr, size_t len) {
 				return 0;
 			}
 
-		} else if (sret == SEND_RESULT::SEND_NEXT) {
-			stackSendBuf(ptr, len);
+		} else if (sret == SR::eNext) {
+			stackSendBuf(ptr, len, 0);
 		}
 
-		if (sret != SEND_RESULT::SEND_FAIL) {
+		if (sret != SR::eFail) {
 			mSendDataCnt += len;
 			return 0;
 		} else {
 			return 1;
 		}
 	} else {
-		stackSendBuf(ptr, len);
+		stackSendBuf(ptr, len, 0);
 		return 0;
 	}
 }
 
-void ReUrlCtrl::stackSendBuf(std::string&& s) {
-	auto *pbuf = new StringPacketBuf;
-	pbuf->setString(move(s));
-	mBufList.emplace_back(pbuf);
-}
-
-void ReUrlCtrl::stackSendBuf(const char* ptr, size_t len) {
-	auto *pbuf = new BytePacketBuf;
-	pbuf->setData(ptr, len);
-	mBufList.emplace_back(pbuf);
-}
-
-int ReUrlCtrl::procOnData(std::string&& data) {
-	alv("proc on data, size=%ld", data.size());
-	if (data.size() == 0) {
-		ald("empty data, request message end.");
-		OnHttpReqMsg(*mpReqMsg);
-		return 1;
+int ReUrlCtrl::sendContent(const char* ptr, size_t len) {
+	if(!mStatus.se) {
+		send(ptr, len, true);
+		if(mStatus.te) {
+			endData();
+		}
+		if(mBufList.empty()) {
+			ald("content sending complete. h=%d", mHandle);
+			assert(mStatus.se);
+			mpCnn->endTxCh(mTxChannel); mTxChannel=0;
+		}
+		return 0;
+	} else {
+		alw("*** can't send data, sending content is already complete.");
+		return -1;
 	}
-//	mRecvDataCnt += data.size();
-//	if (mRecvDataBuf.empty() == true) {
-//		mRecvDataBuf = move(data);
-//	} else {
-//		mRecvDataBuf.append(data);
-//	}
-	OnHttpReqData(move(data));
-	return 0;
 }
+
+#endif
+
+void ReUrlCtrl::OnHttpSendBufReady() {
+}
+
+
+
+void ReUrlCtrl::OnHttpReqData(std::string&& data) {
+
+}
+
+
+
 
 void ReUrlCtrl::setBasicHeader(BaseMsg& msg, int status_code) {
 	msg.setMsgType(BaseMsg::MSG_TYPE_E::RESPONSE);
@@ -371,25 +522,16 @@ void ReUrlCtrl::setBasicHeader(BaseMsg& msg, int status_code) {
 	msg.addHdr(CAS::HS_DATE, get_http_cur_date_str());
 }
 
-int ReUrlCtrl::response_file(int status_code, const char* path) {
-	BaseMsg msg;
-	setBasicHeader(msg, status_code);
-	auto *pbuf = new FilePacketBuf;
-	auto r= pbuf->open(path);
-	if(!r) {
-		msg.setContentLen(pbuf->remain());
-		msg.setContentType(CAS::CT_APP_OCTET);
-		response(msg);
-		mBufList.emplace_back(pbuf);
-		mCnn->reserveWrite();
-		return 0;
-	} else {
-		return -1;
-	}
-}
 
 bool ReUrlCtrl::isComplete() {
 	return mStatus.fin; //F_FIN();
+}
+
+void ReUrlCtrl::closeChannels() {
+	if(mRxChannel) {
+		mpCnn->endRxCh(mRxChannel); mRxChannel=0;
+	}
+	mMsgTx.close();
 }
 
 } /* namespace cahttp */

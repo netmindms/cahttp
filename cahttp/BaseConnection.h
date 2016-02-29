@@ -19,6 +19,7 @@ namespace cahttp {
 class BaseConnection {
 	friend class HttpReq;
 	friend class ReHttpSvrCtx;
+	friend class ReSvrCnn;
 public:
 	enum CH_E {
 		CH_CONNECTED,
@@ -65,7 +66,7 @@ public:
 	virtual void changeSend(CnnIf* pif);
 	virtual void endSend(uint32_t handle);
 #endif
-	virtual cahttp::SEND_RESULT send(uint32_t handle, const char* buf, size_t len);
+	virtual cahttp::SR send(uint32_t handle, const char* buf, size_t len);
 	virtual void reserveWrite();
 	virtual void close();
 	inline bool isWritable() {
@@ -75,7 +76,7 @@ public:
 //	virtual void OnRecvMsg(CaHttpMsg &msg);
 //	virtual void OnRecvData(std::string& data);
 	uint32_t openTxCh(ChLis lis);
-	uint32_t openRxCh(ChLis lis, bool front=false);
+	uint32_t openRxCh(ChLis lis);
 	void endTxCh(uint32_t h);
 	void endRxCh(uint32_t h);
 	BaseMsg* fetchMsg() {
@@ -102,11 +103,15 @@ private:
 	upBaseMsg mRecvMsg;
 	std::string mRecvData;
 	edft::EdTimer mCnnTimer;
+	ChLis mDefRxLis;
 
 	int procRead();
 	void init_sock(bool svr, int fd);
 	int procWritable();
 	int procClosed();
+	void setDefRxListener(ChLis lis) {
+		mDefRxLis = lis;
+	}
 
 };
 

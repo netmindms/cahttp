@@ -107,11 +107,11 @@ enum {
 	HDR__MAX,
 };
 
-enum SEND_RESULT {
-	SEND_PENDING=-1,
-	SEND_OK=0,
-	SEND_FAIL=1,
-	SEND_NEXT=2,
+enum SR {
+	ePending=-1,
+	eOk=0,
+	eFail=1,
+	eNext=2,
 };
 
 #define __HTTP_ERR_MAP(__ERRDEF) \

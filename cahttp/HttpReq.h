@@ -65,7 +65,7 @@ public:
 	int writeFile(const std::string& path) {
 		return writeFile(path.c_str());
 	};
-	SEND_RESULT sendData(const char* ptr, size_t len);
+	SR sendData(const char* ptr, size_t len);
 	int sendPacket(const char* buf, size_t len);
 	int sendPacket(std::string&& s);
 	int getRespStatus();

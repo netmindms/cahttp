@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
 //	res = reg.matchParams("/123/23");
 //	return 0;
  	edft::EdNioInit();
- 	NMDU_SET_LOG_LEVEL(LOG_VERBOSE);
+ 	NMDU_SET_LOG_LEVEL(LOG_DEBUG);
 	::testing::InitGoogleTest(&argc, argv);
 //	::testing::GTEST_FLAG(filter) = "strm.*";
 //	::testing::GTEST_FLAG(filter) = "request.*";

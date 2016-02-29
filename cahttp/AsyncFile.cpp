@@ -30,7 +30,7 @@ int AsyncFile::open(const std::string& path, Lis lis) {
 		return -1;
 	}
 
-	mEvt.setOnListener([this](EdEventFd &efd, int cnt) {
+	mEvt.setOnListener([this](int cnt) {
 		if(mBuf == nullptr) {
 			mBuf.reset( new char[mChkSize] );
 		}
