@@ -30,7 +30,6 @@ private:
 		uint8_t val;
 		struct {
 			uint8_t used: 1;
-			uint8_t te: 1;
 			uint8_t se: 1; // sending end
 			uint8_t fin: 1; // req finished
 			uint8_t err: 4;

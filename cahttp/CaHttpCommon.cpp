@@ -48,6 +48,7 @@ const std::string _gHeaderStrMap[] = {
 namespace cahttp {
 
 namespace CAS {
+	const string CONST_EMPTY_STR="";
 	const string HS_CONTENT_LEN = "Content-Length";
 	const string HS_CONTENT_TYPE = "Content-Type";
 	const string HS_DATE = "Date";

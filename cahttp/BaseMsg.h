@@ -89,8 +89,8 @@ private:
 	MSG_TYPE_E mMsgType;
 	std::string mUrlStr;
 	status_t mStatus;
-	std::pair<std::string, std::string>* mpCtypeHdr;
-//	std::pair<std::string, std::string> *mpClenHdr, *mpTeHdr;
+	std::string* mpCtypeHdr;
+
 	std::list<std::pair<std::string, std::string>> mHdrList;
 	std::pair<std::string, std::string>* findHdr(const std::string& name);
 

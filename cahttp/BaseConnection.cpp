@@ -36,10 +36,6 @@ namespace cahttp {
 BaseConnection::BaseConnection() {
 	mBuf = nullptr;
 	mBufSize = 2048;
-#if 0
-	mNotiIf = nullptr;
-	mRecvIf = nullptr;
-#endif
 	mStatusFlag = 0;
 	mHandleSeed=0;
 }
@@ -59,28 +55,7 @@ int BaseConnection::connect(uint32_t ip, int port, int timeout) {
 		assert(mBuf);
 	}
 
-#if 1
 	init_sock(false, 0);
-#else
-	mMsgFrame.init(false);
-	mSocket.setOnListener([this](EdSmartSocket& sck, int event) {
-		if(event == NETEV_CONNECTED) {
-			FSET_CNN();
-//			mNotiIf->OnWritable();
-			procWritable();
-		} else if(event == NETEV_DISCONNECTED) {
-			ald("*** disconnected...");
-			FSET_DISCNN();
-//			mNotiIf->OnCnn(0);
-			procClosed();
-		} else if(event == NETEV_READABLE) {
-			procRead();
-		} else if(event == NETEV_WRITABLE) {
-//			mNotiIf->OnWritable();
-			procWritable();
-		}
-	});
-#endif
 
 	mCnnTimer.setOnListener([this, ip, port]() {
 		alw("*** connecting timeout... ip=%s, port=%d", cahttpu::Ip2CStr(ip), port);
@@ -120,29 +95,6 @@ SR BaseConnection::send(uint32_t handle, const char* buf, size_t len) {
 	}
 }
 
-#if 0
-void BaseConnection::endSend(uint32_t handle) {
-
-}
-
-void BaseConnection::changeSend(CnnIf* pif) {
-	mNotiIf = pif;
-}
-
-
-
-uint32_t BaseConnection::startSend(CnnIf* pif) {
-	if(!mNotiIf) {
-		mNotiIf = pif;
-		return 1; // TODO:
-	} else {
-		ale("### Error: connection callback if exists");
-		assert(0);
-		return 0;
-	}
-}
-#endif
-
 void BaseConnection::close() {
 	if(mSocket.getFd()>=0) {
 		ald("close socket, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
@@ -160,7 +112,6 @@ void BaseConnection::reserveWrite() {
 
 int BaseConnection::procRead() {
 	assert(mSocket.getFd()>0);
-//	assert(mNotiIf);
 	alv("proc read, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
 	auto rcnt = mSocket.recvPacket(mBuf, mBufSize);
 	if(rcnt>0) {
@@ -168,14 +119,13 @@ int BaseConnection::procRead() {
 		ald("consumed cnt in parser, cnt=%d", ccnt);
 		alv("packet data:\n|%s|", string(mBuf, rcnt));
 		if(ccnt) {
-			assert(ccnt == rcnt);
+//			assert(ccnt == rcnt);
 			int bexit=0;
 			for(;!bexit;) {
 				auto fetch_status = mMsgFrame.status();
 				if(fetch_status == mMsgFrame.FS_HDR) {
 					mRecvMsg.reset( new BaseMsg );
-					auto fetch_result = mMsgFrame.fetchMsg( (*mRecvMsg) );
-//					bexit = mRecvIf->OnMsg(move(mRecvMsg));
+					mMsgFrame.fetchMsg( (*mRecvMsg) );
 					if(mRxChList.size()) {
 						bexit = mRxChList.front().lis(CH_MSG);
 					} else {
@@ -184,8 +134,7 @@ int BaseConnection::procRead() {
 					}
 				} else if(fetch_status == mMsgFrame.FS_DATA) {
 					mRecvData.clear();
-					auto fetch_result = mMsgFrame.fetchData(mRecvData);
-//					bexit = mRecvIf->OnData(move(data));
+					mMsgFrame.fetchData(mRecvData);
 					if(mRxChList.size()) {
 						bexit = mRxChList.front().lis(CH_DATA);
 					} else {
@@ -226,42 +175,24 @@ void BaseConnection::init_sock(bool svr, int fd) {
 		mSocket.openChild(fd);
 		FSET_CNN();
 	}
-#if 0
-	mSocket.setOnListener([this](EdSmartSocket& sck, int event) {
-		if(event == NETEV_CONNECTED) {
-			FSET_CNN();
-			if(mNotiIf) mNotiIf->OnWritable();
-		} else if(event == NETEV_DISCONNECTED) {
-			ald("*** disconnected...");
-			FSET_DISCNN();
-			if(mNotiIf) mNotiIf->OnCnn(0);
-		} else if(event == NETEV_READABLE) {
-			procRead();
-		} else if(event == NETEV_WRITABLE) {
-			if(mNotiIf) mNotiIf->OnWritable();
-		}
-	});
-#endif
+
 	mSocket.setOnListener([this](int event) {
 			if(event == NETEV_CONNECTED) {
 				ald("sock connected");
 				mCnnTimer.kill();
 				FSET_CNN();
-	//			mNotiIf->OnWritable();
 				procWritable();
 			} else if(event == NETEV_DISCONNECTED) {
 				ald("*** sock disconnected...");
 				mCnnTimer.kill();
 				mSocket.close();
 				FSET_DISCNN();
-	//			mNotiIf->OnCnn(0);
 				procClosed();
 			} else if(event == NETEV_READABLE) {
 				alv("sock readble");
 				procRead();
 			} else if(event == NETEV_WRITABLE) {
 				alv("sock writable");
-	//			mNotiIf->OnWritable();
 				procWritable();
 			}
 	});
@@ -326,6 +257,21 @@ int BaseConnection::procWritable() {
 	return 0;
 }
 
+void BaseConnection::removeRxChannel(uint32_t h) {
+	for(auto itr=mRxChList.begin(); itr != mRxChList.end(); itr++) {
+		if(itr->handle == h) {
+			mRxChList.erase(itr);
+		}
+	}
+}
+
+void BaseConnection::remoteTxChannel(uint32_t h) {
+	for(auto itr=mTxChList.begin(); itr != mTxChList.end(); itr++) {
+		if(itr->handle == h) {
+			mTxChList.erase(itr);
+		}
+	}
+}
 
 int BaseConnection::procClosed() {
 	std::list<_chlis> dummy;

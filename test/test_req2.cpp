@@ -8,9 +8,9 @@
 #define LOG_LEVEL LOG_DEBUG
 
 #include <gtest/gtest.h>
-  #include <sys/types.h>
-       #include <sys/stat.h>
-       #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <ednio/EdNio.h>
 #include "../cahttp/HttpReq.h"
 #include "../cahttp/flog.h"
@@ -19,39 +19,93 @@
 #include "../cahttp/AsyncFile.h"
 #include "testutil.h"
 #include "test_common.h"
+
+#define TEMP_FILE_PATH "/tmp/upload.dat"
 using namespace cahttp;
 using namespace edft;
 using namespace std;
 
-static int check_result_file(const string &path="/tmp/upload.dat") {
+
+static int check_result_file(const string &path=TEMP_FILE_PATH) {
 	auto cmd = "diff " + get_test_file_path() + " " + path;
 	auto diffret = system(cmd.data());
 	return diffret;
 }
 
-TEST(req2, basic) {
+
+class Req2Test :public ::testing::Test {
+public:
+	FILE *mSt;
+	void SetUp() override {
+		ali("setup");
+		char dir[1024];
+		getcwd(dir, 1024);
+		string cmd = string("nodejs ")+dir+"/test/refserver.js";
+		mSt = popen(cmd.c_str(), "r");
+		if(mSt) {
+			char buf[1024];
+			auto rcnt = fgets(buf, 1024, mSt);
+			if(rcnt>0) {
+				string s = buf;
+				auto r = s.find("refserver start listening");
+				if(r == s.npos) {
+					assert(0);
+				}
+			}
+		} else {
+			assert(0);
+		}
+
+	}
+
+	void TearDown() override {
+		ali("tear down");
+		system("curl localhost:7000/exit");
+		usleep(100*100);
+		fclose(mSt);
+	}
+};
+
+
+
+
+
+
+TEST_F(Req2Test, basic) {
 	EdTask task;
 	HttpReq req, req404;
+	int r1=0, r2=0;
+	int fdn1, fdn2;
+	uint8_t result=0;
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
+			FDCHK_SV(fdn1);
 			ali("task init");
-			req.request_get("http://localhost:3000/simple", [&](HttpReq::Event event) {
-				if(event == HttpReq::ON_MSG) {
-				} else if(event == HttpReq::ON_DATA) {
-
-				} else if(event == HttpReq::ON_END) {
-					ali("request end,...");
-				}
-			});
-			req404.request_get("http://localhost:3000/status/404", [&](HttpReq::Event event) {
+			req.request_get("http://localhost:7000/hello", [&](HttpReq::Event event, int err) {
 				if(event == HttpReq::ON_END) {
-					ali("request end,...");
+					r1 = req.getRespStatus();
+					result |= 1;
+					ali("simple request end,..., status=%d", r1);
+					if(result==0x03) {
+						task.postExit();
+					}
 				}
 			});
-			task.setTimer(1, 500);
+			req404.request_get("http://localhost:7000/status/404", [&](HttpReq::Event event, int err) {
+				if(event == HttpReq::ON_END) {
+					r2 = req404.getRespStatus();
+					result |= 2;
+					ali("404 request end,... status=%d", req404.getRespStatus());
+					if(result==0x03) {
+						task.postExit();
+					}
+				}
+			});
+
 		} else if(msg.msgid == EDM_CLOSE) {
 			req.close();
 			req404.close();
+			FDCHK_EV(fdn2);
 			ali("task closed");
 		} else if(msg.msgid == EDM_TIMER) {
 			task.killTimer(1);
@@ -60,11 +114,11 @@ TEST(req2, basic) {
 		return 0;
 	});
 	task.runMain();
-	ASSERT_EQ(req.getRespStatus(), 200);
-	ASSERT_EQ(req404.getRespStatus(), 404);
+	ASSERT_EQ(r1, 200);
+	ASSERT_EQ(r2, 404);
 }
 
-TEST(req2, echo) {
+TEST_F(Req2Test, echo) {
 	EdTask task;
 	HttpReq req;
 	string data = "echo";
@@ -72,7 +126,7 @@ TEST(req2, echo) {
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
-			req.request(HTTP_POST, "http://localhost:3000/echo", data, "application/octet-stream", [&](HttpReq::Event event) {
+			req.request(HTTP_POST, "http://localhost:7000/echo", data, "application/octet-stream", [&](HttpReq::Event event, int err) {
 				if(event == HttpReq::ON_MSG) {
 					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
 				} else if(event == HttpReq::ON_DATA) {
@@ -94,7 +148,7 @@ TEST(req2, echo) {
 	ASSERT_STREQ(recvdata.c_str(), data.c_str());
 }
 
-TEST(req2, echo_te) {
+TEST_F(Req2Test, echo_te) {
 	EdTask task;
 	HttpReq req;
 	string data = "echo transfer encoding";
@@ -103,7 +157,7 @@ TEST(req2, echo_te) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
 			req.transferEncoding(true);
-			req.request(HTTP_POST, "http://localhost:3000/echo", data, "application/octet-stream", [&](HttpReq::Event event) {
+			req.request(HTTP_POST, "http://localhost:7000/echo", data, "application/octet-stream", [&](HttpReq::Event event, int err) {
 				if(event == HttpReq::ON_MSG) {
 					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
 				} else if(event == HttpReq::ON_DATA) {
@@ -125,14 +179,15 @@ TEST(req2, echo_te) {
 	ASSERT_STREQ(recvdata.c_str(), data.c_str());
 }
 
-TEST(req2, file) {
+TEST_F(Req2Test, file) {
 	EdTask task;
 	HttpReq req;
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
-			req.setContentFile(get_test_file_path().data(), "application/octet-stream");
-			req.request_post("http://localhost:3000/upload", [&](HttpReq::Event event) {
+//			req.setContentFile(get_test_file_path().data(), "application/octet-stream");
+			req.setContentInfoFile(get_test_file_path().data(), CAS::CT_APP_OCTET);
+			req.request_post("http://localhost:7000/upload", [&](HttpReq::Event event, int err) {
 				if(event == HttpReq::ON_MSG) {
 					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
 				} else if(event == HttpReq::ON_DATA) {
@@ -144,8 +199,8 @@ TEST(req2, file) {
 					task.postExit();
 				}
 			});
-//			req.writeContentFile(get_test_file_path().c_str());
-//			req.writeFile("/home/netmind/temp/a");
+			auto r = req.sendContentFile(get_test_file_path().c_str());
+			assert(!r);
 		} else if(msg.msgid == EDM_CLOSE) {
 			req.close();
 			ali("task closed");
@@ -153,23 +208,26 @@ TEST(req2, file) {
 		return 0;
 	});
 	task.runMain();
+	usleep(1000*100); // waiting for server writing uploaded file.
 	ASSERT_EQ(check_result_file(), 0);
 }
 
 
 
-TEST(req2, file_te) {
+TEST_F(Req2Test, file_te) {
 	EdTask task;
 	HttpReq req;
+	remove_test_file();
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
 //			req.setReqContentFile("/home/netmind/.bashrc", "application/octet-stream");
 //			req.setContentInfoFile("/home/netmind/temp/a", "application/octet-stream");
 //			req.setContentInfoFile(get_test_file_path().data(), "application/octet-stream");
+			req.setContentInfoFile(get_test_file_path().data(), CAS::CT_APP_OCTET);
 			req.transferEncoding(true);
-			req.setContentFile(get_test_file_path().data(), "application/octet-stream");
-			req.request_post("http://localhost:3000/upload", [&](HttpReq::Event event) {
+//			req.setContentFile(get_test_file_path().data(), "application/octet-stream");
+			req.request_post("http://localhost:7000/upload", [&](HttpReq::Event event, int err) {
 				if(event == HttpReq::ON_MSG) {
 					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
 				} else if(event == HttpReq::ON_DATA) {
@@ -181,8 +239,8 @@ TEST(req2, file_te) {
 					task.postExit();
 				}
 			});
-//			req.writeContentFile(get_test_file_path().c_str());
-//			req.writeFile("/home/netmind/temp/a");
+			auto r = req.sendContentFile(get_test_file_path().c_str());
+			assert(!r);
 		} else if(msg.msgid == EDM_CLOSE) {
 			req.close();
 			ali("task closed");
@@ -190,12 +248,13 @@ TEST(req2, file_te) {
 		return 0;
 	});
 	task.runMain();
+	usleep(1000*100); // waiting for server writing uploaded file.
 	ASSERT_EQ(check_result_file(), 0);
 }
 
 
 
-TEST(req2, transfer_enc) {
+TEST_F(Req2Test, transfer_enc) {
 	EdTask task;
 	HttpReq req;
 	task.setOnListener([&](EdMsg &msg) {
@@ -203,7 +262,7 @@ TEST(req2, transfer_enc) {
 			ali("task init");
 			req.addHeader(CAS::HS_CONTENT_TYPE, "application/octet-stream");
 			req.transferEncoding(true);
-			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
+			req.request_post("http://localhost:7000/echo", [&](HttpReq::Event event, int err) {
 				if(event == HttpReq::ON_MSG) {
 					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
 				} else if(event == HttpReq::ON_DATA) {
@@ -226,7 +285,7 @@ TEST(req2, transfer_enc) {
 }
 
 
-TEST(req2, echo_manual) {
+TEST_F(Req2Test, echo_manual) {
 	FDCHK_S(1);
 	EdTask task;
 	HttpReq req;
@@ -235,13 +294,14 @@ TEST(req2, echo_manual) {
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
-			req.setContentLen(data.size());
-			req.setContentType(CAS::CT_APP_OCTET);
-			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
+			req.setContentInfo(data.size(), CAS::CT_APP_OCTET);
+			req.request_post("http://localhost:7000/echo", [&](HttpReq::Event event, int err) {
 				if(event == HttpReq::ON_MSG) {
 					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
-				} else if(event == HttpReq::ON_DATA) {
-
+				} else if(event == HttpReq::ON_SEND) {
+					ali("on data");
+					auto rr = req.sendData(data.c_str(), data.size());
+					assert(rr==SR::eOk);
 				} else if(event == HttpReq::ON_END) {
 					ali("request end,...");
 					recvdata = req.fetchData();
@@ -249,8 +309,8 @@ TEST(req2, echo_manual) {
 					task.postExit();
 				}
 			});
-			auto r = req.sendContent(data.data(), data.size());
-			assert(r==0);
+			auto r = req.sendData(data.c_str(), data.size());
+			assert(r == cahttp::SR::eNext);
 		} else if(msg.msgid == EDM_CLOSE) {
 			req.close();
 			ali("task closed");
@@ -262,7 +322,7 @@ TEST(req2, echo_manual) {
 	FDCHK_E(1);
 }
 
-TEST(req2, echo_manual_tec_zero) {
+TEST_F(Req2Test, echo_manual_tec_zero) {
 	FDCHK_S(1);
 	EdTask task;
 	HttpReq req;
@@ -272,10 +332,10 @@ TEST(req2, echo_manual_tec_zero) {
 			ali("task init");
 			req.transferEncoding(true);
 			req.setContentType(CAS::CT_APP_OCTET);
-			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
+			req.request_post("http://localhost:7000/echo", [&](HttpReq::Event event, int err) {
 				if(event == HttpReq::ON_MSG) {
 					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
-				} else if(event == HttpReq::ON_DATA) {
+				} else if(event == HttpReq::ON_SEND) {
 
 				} else if(event == HttpReq::ON_END) {
 					ali("request end,...");
@@ -296,7 +356,191 @@ TEST(req2, echo_manual_tec_zero) {
 	FDCHK_E(1);
 }
 
-TEST(req2, echo_manual_tec) {
+
+TEST_F(Req2Test, file_manual) {
+	FDCHK_S(1);
+	EdTask task;
+	HttpReq req;
+	string recvdata;
+	FILE* stFile;
+	size_t bufSize=100*1024;
+	unique_ptr<char[]> readBuf(new char[bufSize]);
+	size_t readCnt=0;
+	remove_test_file();
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			stFile = fopen(get_test_file_path().c_str(), "rb");
+			assert(stFile);
+			req.setContentInfoFile(get_test_file_path().c_str(), CAS::CT_APP_OCTET);
+			req.request_post("http://localhost:7000/upload", [&](HttpReq::Event event, int err) {
+				if(event == HttpReq::ON_MSG) {
+					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
+				} else if(event == HttpReq::ON_SEND) {
+
+				} else if(event == HttpReq::ON_END) {
+					ali("request end,...");
+					recvdata = req.fetchData();
+					ali("  recv data=%s", recvdata);
+					task.postExit();
+				}
+			});
+			task.setTimer(1, 1);
+		} else if(msg.msgid == EDM_CLOSE) {
+			req.close();
+			fclose(stFile);
+			ali("task closed");
+		} else if(msg.msgid == EDM_TIMER) {
+			for(;;) {
+				if(readCnt == 0) {
+					readCnt = fread(readBuf.get(), 1, bufSize, stFile);
+	//				ald("read cnt =%ld", readCnt);
+					if(!readCnt) {
+						ali("file read end...");
+						task.killTimer(1);
+					}
+				}
+				if(readCnt>0) {
+					auto r = req.sendData(readBuf.get(), readCnt);
+					if(r == SR::eOk || r == SR::ePending) {
+						readCnt = 0;
+					} else if(r == SR::eNext) {
+						ald("postpone sending data");
+						break;
+					}
+				} else {
+					break;
+				}
+			}
+		}
+		return 0;
+	});
+	task.runMain();
+	usleep(1000*100); // waiting for server writing uploaded file.
+	ASSERT_EQ(check_result_file(), 0);
+	FDCHK_E(1);
+}
+
+TEST_F(Req2Test, file_manual_on_send_seq) {
+	FDCHK_S(1);
+	EdTask task;
+	HttpReq req;
+	string recvdata;
+	FILE* stFile;
+	size_t bufSize=100*1024;
+	unique_ptr<char[]> readBuf(new char[bufSize]);
+	size_t readCnt=0;
+	remove_test_file();
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			stFile = fopen(get_test_file_path().c_str(), "rb");
+			assert(stFile);
+			req.setContentInfoFile(get_test_file_path().c_str(), CAS::CT_APP_OCTET);
+			req.request_post("http://localhost:7000/upload", [&](HttpReq::Event event, int err) {
+				if(event == HttpReq::ON_MSG) {
+					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
+				} else if(event == HttpReq::ON_SEND) {
+					for(;;) {
+						if(readCnt == 0) {
+							readCnt = fread(readBuf.get(), 1, bufSize, stFile);
+							//				ald("read cnt =%ld", readCnt);
+							if(!readCnt) {
+								ali("file read end...");
+								task.killTimer(1);
+							}
+						}
+						if(readCnt>0) {
+							auto r = req.sendData(readBuf.get(), readCnt);
+							if(r == SR::eOk || r == SR::ePending) {
+								readCnt = 0;
+							} else if(r == SR::eNext) {
+								ald("postpone sending data");
+								break;
+							}
+						} else {
+							break;
+						}
+					}
+				} else if(event == HttpReq::ON_END) {
+					ali("request end,...");
+					recvdata = req.fetchData();
+					ali("  recv data=%s", recvdata);
+					task.postExit();
+				}
+			});
+		} else if(msg.msgid == EDM_CLOSE) {
+			req.close();
+			fclose(stFile);
+			ali("task closed");
+		}
+		return 0;
+	});
+	task.runMain();
+	usleep(1000*100); // waiting for server writing uploaded file.
+	ASSERT_EQ(check_result_file(), 0);
+	FDCHK_E(1);
+}
+
+
+
+TEST_F(Req2Test, file_manual_reserve_write) {
+	FDCHK_S(1);
+	EdTask task;
+	HttpReq req;
+	string recvdata;
+	FILE* stFile;
+	size_t bufSize=2*1024;
+	unique_ptr<char[]> readBuf(new char[bufSize]);
+	size_t readCnt=0;
+	remove_test_file();
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			stFile = fopen(get_test_file_path().c_str(), "rb");
+			assert(stFile);
+			req.setContentInfoFile(get_test_file_path().c_str(), CAS::CT_APP_OCTET);
+			req.request_post("http://localhost:7000/upload", [&](HttpReq::Event event, int err) {
+				if(event == HttpReq::ON_MSG) {
+					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
+				} else if(event == HttpReq::ON_SEND) {
+					if(readCnt == 0) {
+						readCnt = fread(readBuf.get(), 1, bufSize, stFile);
+						if(!readCnt) {
+							ali("file read end...");
+						}
+					}
+					if(readCnt>0) {
+						auto r = req.sendData(readBuf.get(), readCnt);
+						if(r == SR::eOk || r == SR::ePending) {
+							readCnt = 0;
+						} else if(r == SR::eNext) {
+							ald("postpone sending data");
+						}
+					}
+					req.reserveWrite();
+				} else if(event == HttpReq::ON_END) {
+					ali("request end,...");
+					recvdata = req.fetchData();
+					ali("  recv data=%s", recvdata);
+					task.postExit();
+				}
+			});
+		} else if(msg.msgid == EDM_CLOSE) {
+			req.close();
+			fclose(stFile);
+			ali("task closed");
+		}
+		return 0;
+	});
+	task.runMain();
+	usleep(1000*100); // waiting for server writing uploaded file.
+	ASSERT_EQ(check_result_file(), 0);
+	FDCHK_E(1);
+}
+
+
+TEST_F(Req2Test, echo_manual_tec) {
 	EdTask task;
 	HttpReq req;
 	string data = "echo manual tec";
@@ -306,11 +550,13 @@ TEST(req2, echo_manual_tec) {
 			ali("task init");
 			req.transferEncoding(true);
 			req.setContentType(CAS::CT_APP_OCTET);
-			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
+			req.request_post("http://localhost:7000/echo", [&](HttpReq::Event event, int err) {
 				if(event == HttpReq::ON_MSG) {
 					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
-				} else if(event == HttpReq::ON_DATA) {
-
+				} else if(event == HttpReq::ON_SEND) {
+					auto r = req.sendData(data.data(), data.size());
+					assert(r==SR::eOk);
+					req.endData();
 				} else if(event == HttpReq::ON_END) {
 					ali("request end,...");
 					recvdata = req.fetchData();
@@ -318,9 +564,6 @@ TEST(req2, echo_manual_tec) {
 					task.postExit();
 				}
 			});
-			auto r = req.sendContent(data.data(), data.size());
-			req.endData();
-			assert(r==0);
 		} else if(msg.msgid == EDM_CLOSE) {
 			req.close();
 			ali("task closed");
@@ -331,48 +574,23 @@ TEST(req2, echo_manual_tec) {
 	ASSERT_STREQ(recvdata.c_str(), data.c_str());
 }
 
-TEST(req2, cnn_timeout) {
-	EdTask task;
-	HttpReq req;
-	task.setOnListener([&](EdMsg &msg) {
-		if(msg.msgid == EDM_INIT) {
-			ali("task init");
-			req.request_get("http://10.10.10.10", [&](HttpReq::Event evt) {
-				if(evt == HttpReq::ON_END) {
-					auto r = req.getRespStatus();
-					ASSERT_EQ(r, 0);
-					ali("expected err=%s", cahttp_err_str(req.getError()));
-					task.postExit();
-				}
-			});
-		} else if(msg.msgid == EDM_CLOSE) {
-			req.close();
-			ali("task closed");
-		}
-		return 0;
-	});
-	task.runMain();
-}
 
-TEST(req2, reuse) {
+TEST_F(Req2Test, reuse) {
 //	auto ss = sizeof(BaseMsg::status_t);
 	FDCHK_S(1);
 	EdTask task;
 	HttpReq req;
 	string data1 = "echo\n";
-	string data2 = "echo reused\n";
-	string recv1, recv2;
+	string data2 = "echo reused 2\n";
+	string data3 = "echo reused 3\n";
+	string recv1, recv2, recv3;
 	int chkfd;
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
 			chkfd = cahttpu::get_num_fds();
-			req.request(HTTP_POST, "http://localhost:3000/echo", data1, "application/octet-stream", [&](HttpReq::Event event) {
-				if(event == HttpReq::ON_MSG) {
-					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
-				} else if(event == HttpReq::ON_DATA) {
-
-				} else if(event == HttpReq::ON_END) {
+			req.request(HTTP_POST, "http://localhost:7000/echo", data1, "application/octet-stream", [&](HttpReq::Event event, int err) {
+				if(event == HttpReq::ON_END) {
 					ali("request end,...");
 					recv1 = req.fetchData();
 					ali("  recv data=%s", recv1);
@@ -387,17 +605,29 @@ TEST(req2, reuse) {
 			ali("task closed");
 		} else if(msg.msgid == EDM_USER) {
 			req.clear();
+			ali("start second request...");
 			req.transferEncoding(true);
 			req.setContentType(CAS::CT_APP_OCTET);
-			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
+			req.request_post("http://localhost:7000/echo", [&](HttpReq::Event event, int err) {
 				if(event == HttpReq::ON_END) {
 					ali("second req end, ");
 					recv2 = req.fetchData();
-					task.postExit();
+					task.postMsg(EDM_USER+1);
 				}
 			});
 			req.sendContent(data2.data(), data2.size());
-			req.endData();
+		} else if(msg.msgid == EDM_USER+1) {
+			req.clear();
+			ali("start second request...");
+			req.setContentInfo(data3.size(), CAS::CT_APP_OCTET);
+			req.request_post("http://localhost:7000/echo", [&](HttpReq::Event event, int err) {
+				if(event == HttpReq::ON_END) {
+					ali("third req end, ");
+					recv3 = req.fetchData();
+					task.postExit();
+				}
+			});
+			req.sendContent(data3.data(), data3.size());
 		} else if(msg.msgid == EDM_TIMER) {
 			task.killTimer(1);
 			task.postExit();
@@ -407,35 +637,40 @@ TEST(req2, reuse) {
 	task.runMain();
 	ASSERT_STREQ(recv1.c_str(), data1.c_str());
 	ASSERT_STREQ(recv2.c_str(), data2.c_str());
+	ASSERT_STREQ(recv3.c_str(), data3.c_str());
 	FDCHK_E(1);
 }
 
 
-TEST(req2, reqman) {
+TEST_F(Req2Test, reqman) {
 	EdTask task;
 	ReqMan man;
 	HttpReq *preq;
-
+	string recvData;
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
-			preq = man.getReq(inet_addr("127.0.0.1"), 3000);
-			preq->request(HTTP_POST, "http://localhost:3000/echo", "echo", CAS::CT_APP_OCTET, [&](HttpReq::Event evt) {
+			preq = man.getReq(inet_addr("127.0.0.1"), 7000);
+			preq->request(HTTP_POST, "http://localhost:7000/echo", "echo", CAS::CT_APP_OCTET, [&](HttpReq::Event evt, int err) {
 				if(evt == HttpReq::ON_END) {
 					ali("on end");
+					recvData = preq->fetchData();
 					preq->close();
+					task.postExit();
 				}
 			});
 		} else if(msg.msgid == EDM_CLOSE) {
+			man.close();
 			ali("task closed");
 		}
 		return 0;
 	});
 	task.runMain();
+	ASSERT_STREQ(recvData.c_str(), "echo");
 }
 
 
-TEST(req2, reqman_premature_close) {
+TEST_F(Req2Test, reqman_premature_close) {
 	EdTask task;
 	ReqMan man;
 	HttpReq *preq;
@@ -445,8 +680,8 @@ TEST(req2, reqman_premature_close) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
 			FDCHK_SV(fdn);
-			preq = man.getReq(inet_addr("10.0.0.1"), 3000);
-			preq->request(HTTP_POST, "http://10.0.0.1:3000/echo", "echo", CAS::CT_APP_OCTET, [&](HttpReq::Event evt) {
+			preq = man.getReq(inet_addr("10.0.0.1"), 7000);
+			preq->request(HTTP_POST, "http://10.0.0.1:7000/echo", "echo", CAS::CT_APP_OCTET, [&](HttpReq::Event evt, int err) {
 				if(evt == HttpReq::ON_END) {
 					ali("on end");
 					preq->close();
@@ -467,7 +702,7 @@ TEST(req2, reqman_premature_close) {
 
 
 
-TEST(req2, send_data) {
+TEST_F(Req2Test, send_data) {
 	EdTask task;
 	HttpReq req;
 	string data = "echo send_data";
@@ -477,7 +712,7 @@ TEST(req2, send_data) {
 			ali("task init");
 			req.setContentType(CAS::CT_APP_OCTET);
 			req.setContentLen(data.size());
-			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
+			req.request_post("http://localhost:7000/echo", [&](HttpReq::Event event, int err) {
 				if(event == HttpReq::ON_MSG) {
 					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
 				} else if(event == HttpReq::ON_DATA) {
@@ -512,45 +747,21 @@ TEST(req2, send_data) {
 }
 
 
-#if 0
-TEST(req2, send_data_file) {
+TEST_F(Req2Test, timeout) {
 	EdTask task;
 	HttpReq req;
-	struct stat statbuf;
-	AsyncFile afile;
-	stat(get_test_file_path().data(), &statbuf);
-	auto fsize = statbuf.st_size;
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
-			req.setContentType(CAS::CT_APP_OCTET);
-			req.setContentLen(fsize);
-			req.request_post("http://localhost:3000/echo", [&](HttpReq::Event event) {
-				if(event == HttpReq::ON_MSG) {
-					ali("resonsed, status=%d, content_len=%ld", req.getRespStatus(), req.getRespContentLen());
-//					afile.open(get_test_file_path(), [&](unique_ptr<char[]> databuf)->int{
-//
-//						return 0;
-//					});
-				} else if(event == HttpReq::ON_DATA) {
-
-				} else if(event == HttpReq::ON_SEND) {
-					ali("on send event");
-					string s1="echo ";
-					string s2="send_data";
-					auto sret = req.sendData(s1.data(), s1.size());
-					assert(sret==SR::eOk);
-					sret = req.sendData(s2.data(), s2.size());
-					assert(sret==SR::eOk);
-					sret = req.sendData(data.data(), data.size());
-					assert(sret == SR::eFail);
-
-				} else if(event == HttpReq::ON_END) {
-					ali("request end,...");
+			req.request_get("http://10.10.10.10", [&](HttpReq::Event evt, int err) {
+				if(evt == HttpReq::ON_END) {
+					auto r = req.getRespStatus();
+					ali("expected err=%s", cahttp_err_str(req.getError()));
+					ASSERT_EQ(r, 0);
+					ASSERT_EQ(err, ERR::eNoResponse);
 					task.postExit();
 				}
 			});
-
 		} else if(msg.msgid == EDM_CLOSE) {
 			req.close();
 			ali("task closed");
@@ -558,6 +769,65 @@ TEST(req2, send_data_file) {
 		return 0;
 	});
 	task.runMain();
-	ASSERT_STREQ(recvdata.c_str(), data.c_str());
 }
-#endif
+
+TEST_F(Req2Test, perf) {
+	EdTask task;
+	EdTimer mTimer;
+	EdEventFd mEvtFd;
+	vector<unique_ptr<HttpReq>> Reqs;
+	size_t ReqCnt;
+	size_t RespCnt;
+	size_t totalCnt=5000;
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			ReqCnt = 0;
+			RespCnt = 0;
+			ali("start requesting flow...");
+			mEvtFd.open([&](int cnt){
+//				for(int i=0;i<10 && Reqs.size()<totalCnt; i++) {
+					unique_ptr<HttpReq> preq ( new HttpReq);
+					auto *myreq = preq.get();
+					preq->request_get("http://localhost:7000/hello", [&mEvtFd, &totalCnt, ReqCnt, &RespCnt, myreq, &task](HttpReq::Event evt, int err) {
+						if(evt == HttpReq::ON_END) {
+							auto r = myreq->getRespStatus();
+							assert(r==200);
+							assert(err==0);
+							RespCnt++;
+							if(RespCnt >= totalCnt) {
+								task.postExit();
+							}
+							myreq->close();
+						}
+					});
+					Reqs.push_back(move(preq));
+					if(Reqs.size()>=totalCnt) {
+						ali("stop flow");
+//						mTimer.kill();
+						mEvtFd.close();
+					} else {
+						mEvtFd.raise();
+
+					}
+//				} // for loop
+			});
+			mEvtFd.raise();
+//			req.request_get("http://localhost:7000", [&](HttpReq::Event evt, int err) {
+//				if(evt == HttpReq::ON_END) {
+//					auto r = req.getRespStatus();
+//					ali("expected err=%s", cahttp_err_str(req.getError()));
+//					ASSERT_EQ(r, 0);
+//					ASSERT_EQ(err, ERR::eNoResponse);
+//					task.postExit();
+//				}
+//			});
+		} else if(msg.msgid == EDM_CLOSE) {
+			ali("task closed");
+		}
+		return 0;
+	});
+	task.runMain();
+	ASSERT_EQ(RespCnt, totalCnt);
+	Reqs.clear();
+}

@@ -36,7 +36,7 @@ MsgTransmitter::MsgTransmitter() {
 MsgTransmitter::~MsgTransmitter() {
 }
 
-int MsgTransmitter::open(BaseConnection& cnn, bool firstch, std::function<void(TR)> lis) {
+int MsgTransmitter::open(BaseConnection& cnn, std::function<void(TR)> lis) {
 	mLis = lis;
 	mpCnn = &cnn;
 	mTxChannel = mpCnn->openTxCh([this](BaseConnection::CH_E evt) {
@@ -50,7 +50,7 @@ int MsgTransmitter::open(BaseConnection& cnn, bool firstch, std::function<void(T
 		}
 		return 0;
 	});
-	ali("open tx channel=%d", mTxChannel);
+	ald("open tx channel=%d", mTxChannel);
 	return (!mTxChannel);
 }
 
@@ -82,7 +82,7 @@ int MsgTransmitter::procOnWritable() {
 					// writing chunk tail
 					ret = mpCnn->send(mTxChannel, "\r\n", 2);
 					if (ret == SR::eNext || ret == SR::eFail) {
-						assert(ret == SR::eFail);
+						assert(ret != SR::eFail);
 						ald("*** fail writing chunk ending line");
 						stackTeByteBuf(nullptr, 0, false, false, true, true);
 						pktbuf->consume();
@@ -113,7 +113,7 @@ int MsgTransmitter::procOnWritable() {
 	}
 	alv("  buf list count=%d", mBufList.size());
 	if (mBufList.empty() == true) {
-		if (mStatus.se) {
+		if (mStatus.final && mStatus.se) {
 			mLis(TR::eSendOk);
 		} else {
 			if(mStatus.phase) {
@@ -132,9 +132,9 @@ int MsgTransmitter::sendMsg(BaseMsg& msg) {
 		return -1;
 	}
 	mSendDataCnt = 0;
-	mStatus.te = msg.getTransferEncoding();
+	mStatus.te = (msg.getTransferEncoding());
 	mContentLen = msg.getContentLen();
-	if(msg.getRespStatus() >= 200) {
+	if(msg.getMsgType()==BaseMsg::REQUEST || msg.getRespStatus() >= 200) {
 		mStatus.final = 1;
 	}
 	if(mStatus.final && !mStatus.te && mContentLen==0) {
@@ -206,7 +206,7 @@ int MsgTransmitter::sendContent(std::unique_ptr<PacketBuf> upbuf) {
 void MsgTransmitter::endData() {
 	if(mStatus.te && !mStatus.se) {
 		mStatus.phase=0;
-		if(mStatus.final) {
+		if(mStatus.final) { // TODO: request case ???
 			mStatus.se = 1;
 		}
 		if(mBufList.empty()==true) {
@@ -314,6 +314,8 @@ void MsgTransmitter::close() {
 	if(mTxChannel) {
 		mpCnn->endTxCh(mTxChannel); mTxChannel=0;
 	}
+
+	mStatus.val = 0;
 }
 
 int MsgTransmitter::sendContentFile(const char* path) {
@@ -333,5 +335,12 @@ void MsgTransmitter::stackSendBuf(const char* ptr, size_t len, int type) {
 }
 
 
+
+
+void MsgTransmitter::reserveWrite() {
+	if(!mStatus.se && mTxChannel) {
+		mpCnn->reserveWrite();
+	}
+}
 
 } /* namespace cahttp */

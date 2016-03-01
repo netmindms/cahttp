@@ -26,7 +26,7 @@ public:
 	};
 	MsgTransmitter();
 	virtual ~MsgTransmitter();
-	int open(BaseConnection& cnn, bool firstch, std::function<void(TR)> lis);
+	int open(BaseConnection& cnn, std::function<void(TR)> lis);
 	int sendMsg(BaseMsg& msg);
 //	SR sendData(const char* ptr, size_t len);
 	SR sendData(const char* ptr, size_t len, bool buffering);
@@ -39,12 +39,13 @@ public:
 	inline int getTxChannel() const {
 		return mTxChannel;
 	}
+	void reserveWrite();
 private:
 	union status_t {
 		uint8_t val;
 		struct {
 			uint8_t used: 1;
-			uint8_t te: 1;
+			uint8_t te: 1; // ransfer encoding
 			uint8_t se: 1; // sending end
 			uint8_t phase: 1; // 0: msg sending, 1: data sending phase
 			uint8_t final: 1;

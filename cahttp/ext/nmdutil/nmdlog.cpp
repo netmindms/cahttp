@@ -145,12 +145,12 @@ void LogInst::checkSize() {
 		}
 	}
 }
-
-int LogInst::writeFile(const char *ptr, size_t len) {
-	auto wret = write(mFd, ptr, len);
-	checkSize();
-	return wret;
-}
+//
+//int LogInst::writeFile(const char *ptr, size_t len) {
+//	auto wret = write(mFd, ptr, len);
+//	checkSize();
+//	return wret;
+//}
 
 int LogInst::backupFile() {
 	if(mBackupFolder.empty()) {
@@ -189,6 +189,4 @@ int LogInst::backupFile() {
 	return 0;
 }
 
-
 } // namespace nmdu
-

@@ -26,6 +26,7 @@ typedef std::unique_ptr<CaUserObj> upCaUserObj;
 
 namespace CAS {
 	// constant header name string
+	extern const std::string CONST_EMPTY_STR;
 	extern const std::string HS_CONTENT_LEN;
 	extern const std::string HS_CONTENT_TYPE;
 	extern const std::string HS_DATE;
@@ -115,12 +116,13 @@ enum SR {
 };
 
 #define __HTTP_ERR_MAP(__ERRDEF) \
-	__ERRDEF(0, NO) \
-	__ERRDEF(1, EARLY_DISCONNECTED) \
+	__ERRDEF(0, NoErr) \
+	__ERRDEF(1, EarlyDisconnected) \
+	__ERRDEF(2, NoResponse) \
 
 
 enum ERR {
-#define __ERRDEF(num, name) E_##name=num,
+#define __ERRDEF(num, name) e##name=num,
 	__HTTP_ERR_MAP(__ERRDEF)
 };
 #undef __ERRDEF

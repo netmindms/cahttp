@@ -29,21 +29,28 @@ union tt {
 	};
 };
 
+#if 0
+static std::thread _refServerThr;
+int run_test_ref_server() {
+	_refServerThr = std::thread([]() {
+		return system("nodejs test/refserver.js");
+	});
+	usleep(1000*1000);
+	return 0;
+}
+
+void wait_ref_server() {
+	system("curl localhost:7000/exit");
+	if(_refServerThr.joinable()) {
+		_refServerThr.join();
+	}
+}
+#endif
 
 int main(int argc, char* argv[]) {
-
-//	cahttp::RegExp reg;
-//	const char *pa = R"(/([0-9]+)/([0-9]+))";
-//	auto r = reg.setPattern(pa);
-//	auto res = reg.matchParams("/123/456");
-//	auto &vs = res.second;
-//
-//	reg.clear();
-//	reg.setPattern(R"(/abc/123)");
-//	res = reg.matchParams("/123/23");
-//	return 0;
+//	run_test_ref_server();
  	edft::EdNioInit();
- 	NMDU_SET_LOG_LEVEL(LOG_DEBUG);
+ 	NMDU_SET_LOG_LEVEL(LOG_INFO);
 	::testing::InitGoogleTest(&argc, argv);
 //	::testing::GTEST_FLAG(filter) = "strm.*";
 //	::testing::GTEST_FLAG(filter) = "request.*";
@@ -76,11 +83,14 @@ int main(int argc, char* argv[]) {
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc";
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc_file";
 //	::testing::GTEST_FLAG(filter) = "req2.send_data";
+	::testing::GTEST_FLAG(filter) = "Req2Test.perf";
 //	::testing::GTEST_FLAG(filter) = "etc.*";
-	::testing::GTEST_FLAG(filter) = "svr2.*";
+//	::testing::GTEST_FLAG(filter) = "svr2.*";
 
 
 	auto ret = RUN_ALL_TESTS();
+
+//	wait_ref_server();
 	printf("test exit, ...\n");
 	return ret;
 }

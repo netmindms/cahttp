@@ -6,6 +6,7 @@
  */
 
 
+#include <unistd.h>
 #include <sys/utsname.h>
 #include <string>
 
@@ -16,4 +17,8 @@ string get_test_file_path() {
 	uname(&un);
 	string path = string("/boot/initrd.img-") + un.release;
 	return path;
+}
+
+void remove_test_file() {
+	unlink( get_test_file_path().c_str());
 }

@@ -55,7 +55,6 @@ void BaseMsg::clear() {
 	mContentLen = 0;
 	mProtocolVer.clear();
 	mRespStatusCode = 0;
-//	mpClenHdr = nullptr;
 	mStatus.val = 0;
 }
 
@@ -67,55 +66,35 @@ const std::string& BaseMsg::getContentType() {
 	static std::string nullstr;
 	if(mStatus.c_ct) {
 		if(mpCtypeHdr) {
-			return mpCtypeHdr->second;
+			return *mpCtypeHdr;
 		} else {
 			return nullstr;
 		}
 	} else {
-
+		static string __nullstr;
+		return __nullstr;
 	}
 }
 
 void BaseMsg::setContentType(const std::string& type) {
 	if(mStatus.c_ct) {
 		if(mpCtypeHdr) {
-			mpCtypeHdr->second = type;
+			*mpCtypeHdr = type;
 		} else {
+			// no content type header
 			mHdrList.emplace_back(CAS::HS_CONTENT_TYPE, type);
-			mpCtypeHdr = &(mHdrList.back());
+			mpCtypeHdr = &(mHdrList.back().second);
 		}
 	} else {
-		mHdrList.emplace_back(CAS::HS_CONTENT_TYPE, type);
-		mpCtypeHdr = &(mHdrList.back());
+		auto *phdr = findHdr(CAS::HS_CONTENT_TYPE);
+		if(!phdr) {
+			addHdr(CAS::HS_CONTENT_TYPE, type);
+			phdr = &(mHdrList.back());
+		}
+		mpCtypeHdr = &(phdr->second);
 	}
 	mStatus.c_ct = 1;
 }
-
-#if 0
-void BaseMsg::setContentLen(int64_t len) {
-#if 1
-	removeHdr(CAS::HS_TRANSFER_ENC);
-	setHdr(CAS::HS_CONTENT_LEN, to_string(len));
-	mContentLen = len;
-#else
-	mContentLen = len;
-	if(mContentLen>=0) {
-		if(mpClenHdr == nullptr) {
-			mpClenHdr = findHdr(CAS::HS_CONTENT_LEN);
-		}
-		if(mpClenHdr==nullptr) {
-			mHdrList.emplace_back(CAS::HS_CONTENT_LEN, to_string(len));
-			mpClenHdr = &(mHdrList.back());
-		}
-		mpClenHdr->second = to_string(len);
-		if(mpTeHdr) {
-			removeHdr(CAS::HS_TRANSFER_ENC);
-			mpTeHdr = nullptr;
-		}
-	}
-#endif
-}
-#endif
 
 void BaseMsg::addHdr(const std::string& name, const std::string& val) {
 	mStatus.cache = 0;

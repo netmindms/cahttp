@@ -72,13 +72,12 @@ public:
 	inline bool isWritable() {
 		return mSocket.isWritable();
 	}
-//	void setCallback(CnnIf* pif);
-//	virtual void OnRecvMsg(CaHttpMsg &msg);
-//	virtual void OnRecvData(std::string& data);
 	uint32_t openTxCh(ChLis lis);
 	uint32_t openRxCh(ChLis lis);
 	void endTxCh(uint32_t h);
 	void endRxCh(uint32_t h);
+	void removeRxChannel(uint32_t h);
+	void remoteTxChannel(uint32_t h);
 	BaseMsg* fetchMsg() {
 		return mRecvMsg.release();
 	};

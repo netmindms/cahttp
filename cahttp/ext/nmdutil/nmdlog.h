@@ -36,6 +36,7 @@ MAKE_LOG_INSTANCE(your_log_instance_name);
 #include <memory>
 #include <string>
 #include <mutex>
+#include <unistd.h>
 #include "nmdu_format.h"
 namespace cahttpu {
 
@@ -81,7 +82,17 @@ public:
 	int getFileFd() {
 		return mFd;
 	}
-	int writeFile(const char* ptr, size_t len);
+	inline void writeFile(const char* ptr, size_t len) {
+		lock();
+		write(mFd, ptr, len);
+		checkSize();
+		unlock();
+	};
+	inline void writeLog(FILE* scr_st, const char* ptr, size_t len) {
+		lock();
+		std::fwrite(ptr, 1, len, scr_st);
+		unlock();
+	};
 private:
 	std::mutex mMutex;
 	int mLevel;
@@ -139,16 +150,15 @@ struct INST_TYPE_##NAME { \
 #define NMDULOGPUT(LL, OUT, FMTSTR, ...) do {\
 	if(LOG_LEVEL>=LL) {\
 		cahttpu::fmt::MemoryWriter w;\
-		LOCAL_LOG_INST->lock();\
 		if(LOCAL_LOG_INST->level()>=LL) {\
 			cahttpu::NmduMemPrintf(w, "%s [" C_ ##LL ":%s:%d] " FMTSTR "\n", \
 					cahttpu::GetLogTimeNow(), NMDU_FILE_NAME, __LINE__, ## __VA_ARGS__);\
-			std::fwrite(w.data(), 1, w.size(), OUT);\
+			/*std::fwrite(w.data(), 1, w.size(), OUT);\*/ \
+			LOCAL_LOG_INST->writeLog(OUT, w.data(), w.size()); \
 		}\
 		if(LOCAL_LOG_INST->levelFile()>=LL) {\
 			LOCAL_LOG_INST->writeFile(w.data(), w.size());\
 		}\
-		LOCAL_LOG_INST->unlock();\
 	}\
 	}while(0)
 #endif

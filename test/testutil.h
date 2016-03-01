@@ -10,6 +10,6 @@
 
 #include <string>
 std::string get_test_file_path();
-
+void remove_test_file();
 
 #endif /* TEST_TESTUTIL_H_ */
