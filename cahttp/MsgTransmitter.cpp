@@ -313,6 +313,7 @@ void MsgTransmitter::stackSendBuf(std::string&& s, int type) {
 void MsgTransmitter::close() {
 	if(mTxChannel) {
 		mpCnn->endTxCh(mTxChannel); mTxChannel=0;
+//		mpCnn->remoteTxChannel(mTxChannel);
 	}
 
 	mStatus.val = 0;
@@ -344,3 +345,4 @@ void MsgTransmitter::reserveWrite() {
 }
 
 } /* namespace cahttp */
+

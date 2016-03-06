@@ -36,8 +36,10 @@ static int check_result_file(const string &path=TEMP_FILE_PATH) {
 class Req2Test :public ::testing::Test {
 public:
 	FILE *mSt;
+	int mStartFdNum;
 	void SetUp() override {
 		ali("setup");
+		FDCHK_SV(mStartFdNum);
 		char dir[1024];
 		getcwd(dir, 1024);
 		string cmd = string("nodejs ")+dir+"/test/refserver.js";
@@ -63,11 +65,9 @@ public:
 		system("curl localhost:7000/exit");
 		usleep(100*100);
 		fclose(mSt);
+		FDCHK_SV(mStartFdNum);
 	}
 };
-
-
-
 
 
 
@@ -147,6 +147,7 @@ TEST_F(Req2Test, echo) {
 	task.runMain();
 	ASSERT_STREQ(recvdata.c_str(), data.c_str());
 }
+
 
 TEST_F(Req2Test, echo_te) {
 	EdTask task;
@@ -618,7 +619,7 @@ TEST_F(Req2Test, reuse) {
 			req.sendContent(data2.data(), data2.size());
 		} else if(msg.msgid == EDM_USER+1) {
 			req.clear();
-			ali("start second request...");
+			ali("start third request...");
 			req.setContentInfo(data3.size(), CAS::CT_APP_OCTET);
 			req.request_post("http://localhost:7000/echo", [&](HttpReq::Event event, int err) {
 				if(event == HttpReq::ON_END) {
@@ -699,7 +700,98 @@ TEST_F(Req2Test, reqman_premature_close) {
 }
 
 
+TEST_F(Req2Test, reqman_pipe) {
+	EdTask task;
+	ReqMan man;
+	HttpReq *preq1, *preq2, *preq3;
+	string recvData;
+	int resp1, resp2, resp3;
+	string rdata1, rdata2, rdata3;
 
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			preq1 = man.getReq(inet_addr("127.0.0.1"), 7000);
+			preq1->request_get("http://localhost:7000/delay", [&](HttpReq::Event evt, int err) {
+				if(evt == HttpReq::ON_END) {
+					resp1 = preq1->getRespStatus();
+					rdata1 = preq1->fetchData();
+					ali("req1 end, status=%d", resp1);
+					ASSERT_EQ(resp1, 200);
+
+				}
+			});
+
+			preq2 = man.getReq(inet_addr("127.0.0.1"), 7000);
+			preq2->request(HTTP_POST, "http://localhost:7000/echo", "echo\n", CAS::CT_APP_OCTET, [&](HttpReq::Event evt, int err) {
+				if(evt == HttpReq::ON_END) {
+					ali("req2 end, status=%d", preq2->getRespStatus());
+					resp2 = preq2->getRespStatus();
+					rdata2 = preq2->fetchData();
+					ASSERT_EQ(resp2, 200);
+					recvData = preq2->fetchData();
+				}
+			});
+
+			preq3 = man.getReq(inet_addr("127.0.0.1"), 7000);
+			preq3->transferEncoding(true);
+			preq3->setContentType(CAS::CT_APP_OCTET);
+			preq3->request_post("http://localhost:7000/upload", [&](HttpReq::Event evt, int err) {
+				if(evt == HttpReq::ON_END) {
+					ali("req3 end, status=%d", preq3->getRespStatus());
+					resp3 = preq3->getRespStatus();
+					ASSERT_EQ(resp3, 200);
+					task.postExit();
+				}
+			});
+			preq3->sendContentFile(get_test_file_path().c_str());
+		} else if(msg.msgid == EDM_CLOSE) {
+			man.close();
+			ali("task closed");
+		}
+		return 0;
+	});
+	task.runMain();
+	ASSERT_EQ(resp1, 200);
+	ASSERT_STREQ(rdata1.c_str(), "delayed response\n");
+	ASSERT_EQ(resp2, 200);
+	ASSERT_STREQ(rdata2.c_str(), "echo\n");
+	ASSERT_EQ(resp3, 200);
+	ASSERT_EQ(check_result_file(), 0);
+}
+
+TEST_F(Req2Test, reqman_idle_timer) {
+	EdTask task;
+	ReqMan man;
+	HttpReq *preq;
+	int fdn;
+	size_t dummyCnt=0;
+
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			FDCHK_SV(fdn);
+			preq = man.getReq(inet_addr("127.0.0.1"), 7000);
+			preq->request(HTTP_POST, "http://127.0.0.1:7000/echo", "echo", CAS::CT_APP_OCTET, [&](HttpReq::Event evt, int err) {
+				if(evt == HttpReq::ON_END) {
+					ali("on end");
+					task.setTimer(1, 7000);
+					preq->close();
+				}
+			});
+		} else if(msg.msgid == EDM_CLOSE) {
+			ali("task closed");
+			man.close();
+			FDCHK_EV(fdn);
+		} else if(msg.msgid == EDM_TIMER) {
+			dummyCnt = man.dbgGetCnnDummyPoolSize();
+			task.postExit();
+		}
+		return 0;
+	});
+	task.runMain();
+	ASSERT_EQ(dummyCnt, 1);
+}
 
 
 TEST_F(Req2Test, send_data) {
@@ -747,6 +839,27 @@ TEST_F(Req2Test, send_data) {
 }
 
 
+TEST_F(Req2Test, forceclose) {
+	EdTask task;
+	HttpReq req;
+	task.setOnListener([&](EdMsg &msg) {
+		if(msg.msgid == EDM_INIT) {
+			ali("task init");
+			req.request_get("http://10.10.10.10", [&](HttpReq::Event evt, int err) {
+
+			});
+			task.setTimer(1, 1000);
+		} else if(msg.msgid == EDM_CLOSE) {
+			ali("task closed");
+		} else if(msg.msgid == EDM_TIMER) {
+			task.killTimer(1);
+			req.close();
+			task.postExit();
+		}
+		return 0;
+	});
+	task.runMain();
+}
 TEST_F(Req2Test, timeout) {
 	EdTask task;
 	HttpReq req;
@@ -778,7 +891,7 @@ TEST_F(Req2Test, perf) {
 	vector<unique_ptr<HttpReq>> Reqs;
 	size_t ReqCnt;
 	size_t RespCnt;
-	size_t totalCnt=5000;
+	size_t totalCnt=1;
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
 			ali("task init");
@@ -831,3 +944,6 @@ TEST_F(Req2Test, perf) {
 	ASSERT_EQ(RespCnt, totalCnt);
 	Reqs.clear();
 }
+
+
+

@@ -25,14 +25,26 @@ HttpReq* ReqMan::getReq(uint32_t ip, int port) {
 	clearDummyReq();
 	SharedConnection* cnn=nullptr;
 	for(auto &c: mCnns) {
-		if(ip == c.second.ip() && port == c.second.port()) {
-			cnn = &c.second;
+		if(ip == c.ip() && port == c.port()) {
+			ald("connection already exist");
+			cnn = &c;
 		}
 	}
 	if(cnn == nullptr) {
 		ald("cnn not found, ip=%s, port=%d", cahttpu::Ip2Str(ip), port);
 		if(++mHandleSeed==0) mHandleSeed++;
-		cnn = &(mCnns[mHandleSeed]);
+		mCnns.emplace_back();
+		cnn = &(mCnns.back());
+		cnn->setHandle(mHandleSeed);
+		cnn->setRelLis([this](uint32_t handle) {
+			for(auto itr=mCnns.begin(); itr!=mCnns.end();itr++) {
+				if(handle == itr->getHandle()) {
+					mCnnDummyPool.splice(mCnnDummyPool.end(), mCnns, itr);
+					break;
+				}
+			}
+			ald("dummy cnn pool size=%d", mCnnDummyPool.size());
+		});
 		ald("add new connection, handle=%ld, cnt=%d", mHandleSeed, mCnns.size());
 	}
 
@@ -63,7 +75,7 @@ void ReqMan::close() {
 	mReqs.clear();
 
 	for(auto &cnn: mCnns) {
-		cnn.second.close();
+		cnn.close();
 	}
 	mCnns.clear();
 

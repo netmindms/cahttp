@@ -55,6 +55,12 @@ app.get('/exit', function(req, res) {
 	process.exit();
 });
 
+app.get('/delay', function(req, res) {
+	setTimeout(function() {
+		res.send("delayed response\n");
+	}, 1000);
+//	res.sendFile('/home/netmind/Pictures/nodejs.png');
+});
 
 var server = app.listen(7000, function() {
 	var host = server.address().address;

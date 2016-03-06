@@ -22,10 +22,15 @@ public:
 	virtual ~ReqMan();
 	HttpReq* getReq(uint32_t ip, int port);
 	void close();
+	size_t dbgGetCnnDummyPoolSize() {
+		return mCnnDummyPool.size();
+	}
 private:
-	std::unordered_map<uint32_t, SharedConnection> mCnns;
+	std::list<SharedConnection> mCnns;
+//	std::unordered_map<uint32_t, SharedConnection> mCnns;
 	std::unordered_map<uint32_t, HttpManReq> mReqs;
 	std::list<uint32_t> mReqDummy;
+	std::list<SharedConnection> mCnnDummyPool;
 	uint32_t mHandleSeed;
 
 	void dummyReq(uint32_t handle);

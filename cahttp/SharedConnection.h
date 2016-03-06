@@ -17,17 +17,15 @@ class SharedConnection: public BaseConnection {
 public:
 	SharedConnection();
 	virtual ~SharedConnection();
-	inline uint32_t ip() {
-		return mSvrIp;
-	}
-	inline int port() {
-		return mSvrPort;
+	void OnIdle() override;
+	void OnDisconnected() override;
+	void setRelLis(std::function<void(uint32_t)>);
+	uint32_t getHandle() {
+		return mHandle;
 	}
 private:
 	uint32_t mHandle;
-	uint32_t mSvrIp;
-	int mSvrPort;
-
+	std::function<void(uint32_t)> mLis;
 	void setHandle(uint32_t handle) {
 		mHandle = handle;
 	}

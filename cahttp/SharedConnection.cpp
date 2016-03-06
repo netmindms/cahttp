@@ -4,6 +4,8 @@
  *  Created on: Feb 21, 2016
  *      Author: netmind
  */
+#define LOG_LEVEL LOG_VERBOSE
+#include "flog.h"
 
 #include "SharedConnection.h"
 
@@ -11,12 +13,26 @@ namespace cahttp {
 
 SharedConnection::SharedConnection() {
 	mHandle = 0;
-	mSvrIp = 0;
-	mSvrPort = 0;
 }
 
 SharedConnection::~SharedConnection() {
-	// TODO Auto-generated destructor stub
+}
+
+
+void SharedConnection::OnIdle() {
+	ald("connection idle,...");
+	mLis(mHandle);
+}
+
+
+void SharedConnection::OnDisconnected() {
+	BaseConnection::OnDisconnected();
+	ald("disconnected, ...");
+	mLis(mHandle);
+}
+
+void SharedConnection::setRelLis(std::function<void(uint32_t)> lis) {
+	mLis = lis;
 }
 
 } /* namespace cahttp */

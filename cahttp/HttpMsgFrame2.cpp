@@ -4,7 +4,7 @@
  *  Created on: Apr 13, 2015
  *      Author: netmind
  */
-#define LOG_LEVEL LOG_DEBUG
+#define LOG_LEVEL LOG_WARN
 #include <climits>
 #include "flog.h"
 #include "HttpMsgFrame2.h"
@@ -274,7 +274,7 @@ int HttpMsgFrame2::dgMsgBeginCb(http_parser* parser) {
 	++mMsgSeqNum;
 	if(mMsgSeqNum==UINT32_MAX) mMsgSeqNum = 0;
 
-	ald("msg begin cb..., msg_seq_num=%d", mMsgSeqNum);
+	alv("msg begin cb..., msg_seq_num=%d", mMsgSeqNum);
 	mMsg.reset(new BaseMsg(mIsReq ? BaseMsg::REQUEST: BaseMsg::RESPONSE));
 	mBodyData.clear();
 	mPs = PS_FIRST_LINE;
@@ -316,7 +316,7 @@ int HttpMsgFrame2::chunk_comp_cb(http_parser* parser) {
 }
 
 void HttpMsgFrame2::procFirstLine() {
-	ald("proc first line");
+	alv("proc first line");
 	mPs = PS_HEADER;
 }
 
@@ -359,7 +359,7 @@ string HttpMsgFrame2::pullPacket() {
 
 int HttpMsgFrame2::dgFirstLineStatus(http_parser* parser, const char* at, size_t length) {
 	ald("first line status: code=%d", parser->status_code);
-	ald("   status=%s", string(at, length));
+	alv("   status=%s", string(at, length));
 	return 0;
 }
 

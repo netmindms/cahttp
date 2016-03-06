@@ -161,10 +161,12 @@ int HttpReq::procOnMsg() {
 
 void HttpReq::close() {
 	if(mpCnn) {
-		mMsgTx.close();
-		if(mRxHandle) {
-			closeRxCh();
+
+		if(mRxHandle || mMsgTx.getTxChannel()) {
+			mpCnn->forceCloseChannel(mRxHandle, mMsgTx.getTxChannel());
+			mRxHandle=0;
 		}
+
 		mpCnn = nullptr;
 		mSvrIp = 0;
 		mSvrPort = 0;
@@ -173,7 +175,7 @@ void HttpReq::close() {
 	}
 	if(mPropCnn) {
 		mPropCnn->close();
-		mPropCnn.reset();
+//		mPropCnn.reset();
 	}
 	mRespTimer.kill();
 }
@@ -190,7 +192,7 @@ int HttpReq::procOnData() {
 		mpCnn->endRxCh(mRxHandle); mRxHandle=0;
 		mStatus.fin = 1;
 		mLis(ON_END, 0);
-		return 1;
+		return 0;
 	}
 	mRecvDataCnt += data.size();
 	if(mRecvDataBuf.empty()==true) {

@@ -47,10 +47,10 @@ void wait_ref_server() {
 }
 #endif
 
+#include "../cahttp/BaseConnection.h"
 int main(int argc, char* argv[]) {
-//	run_test_ref_server();
  	edft::EdNioInit();
- 	NMDU_SET_LOG_LEVEL(LOG_INFO);
+ 	NMDU_SET_LOG_LEVEL(LOG_DEBUG);
 	::testing::InitGoogleTest(&argc, argv);
 //	::testing::GTEST_FLAG(filter) = "strm.*";
 //	::testing::GTEST_FLAG(filter) = "request.*";
@@ -83,7 +83,9 @@ int main(int argc, char* argv[]) {
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc";
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc_file";
 //	::testing::GTEST_FLAG(filter) = "req2.send_data";
-	::testing::GTEST_FLAG(filter) = "Req2Test.perf";
+//	::testing::GTEST_FLAG(filter) = "Req2Test.file";
+	::testing::GTEST_FLAG(filter) = "Req2Test.reqman_idle_timer";
+//	::testing::GTEST_FLAG(filter) = "Req2Test.*";
 //	::testing::GTEST_FLAG(filter) = "etc.*";
 //	::testing::GTEST_FLAG(filter) = "svr2.*";
 

@@ -61,6 +61,10 @@ private:
 	int64_t mContentLen;
 	std::string mRecvDataBuf;
 
+	void forceCloseChannel() {
+		mpCnn->removeTxChannel(mTxChannel);
+		mTxChannel = 0;
+	};
 	int procOnWritable();
 	void stackTeByteBuf(const char* ptr, size_t len, bool head, bool body, bool tail, bool front);
 	void stackSendBuf(std::string&& s, int type);

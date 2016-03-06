@@ -50,6 +50,8 @@ BaseConnection::~BaseConnection() {
 
 
 int BaseConnection::connect(uint32_t ip, int port, int timeout) {
+	mSvrIp = ip;
+	mSvrPort = port;
 	if(!mBuf) {
 		mBuf = new char[mBufSize];
 		assert(mBuf);
@@ -102,7 +104,9 @@ void BaseConnection::close() {
 	}
 
 	mCnnTimer.kill();
-
+	mLocalEvent.close();
+	mSvrIp = 0;
+	mSvrPort = 0;
 }
 
 void BaseConnection::reserveWrite() {
@@ -184,10 +188,11 @@ void BaseConnection::init_sock(bool svr, int fd) {
 				procWritable();
 			} else if(event == NETEV_DISCONNECTED) {
 				ald("*** sock disconnected...");
-				mCnnTimer.kill();
-				mSocket.close();
-				FSET_DISCNN();
-				procClosed();
+//				mCnnTimer.kill();
+//				mSocket.close();
+//				FSET_DISCNN();
+//				procClosed();
+				OnDisconnected();
 			} else if(event == NETEV_READABLE) {
 				alv("sock readble");
 				procRead();
@@ -196,6 +201,17 @@ void BaseConnection::init_sock(bool svr, int fd) {
 				procWritable();
 			}
 	});
+
+	if(mLocalEvent.getFd()<=0) {
+		mLocalEvent.open(1000, [this](EdLocalEvent::Event &evt){
+			ald("cnn local event, id=%d", evt.evt_id);
+			if(evt.evt_id == 0) {
+				mDummyChannels.clear();
+				procClosed();
+				OnIdle();
+			}
+		});
+	}
 }
 
 
@@ -209,6 +225,7 @@ uint32_t BaseConnection::openTxCh(ChLis lis) {
 }
 
 uint32_t BaseConnection::openRxCh(ChLis lis) {
+	mCnnTimer.kill();
 	if(++mHandleSeed==0) mHandleSeed++;
 	_chlis *c;
 	mRxChList.emplace_back();
@@ -219,27 +236,40 @@ uint32_t BaseConnection::openRxCh(ChLis lis) {
 }
 
 void BaseConnection::endTxCh(uint32_t h) {
-	assert(mTxChList.size()>0 && mTxChList.front().handle==h);
-	for(auto itr=mTxChList.begin();itr != mTxChList.end(); itr++) {
-		if(itr->handle == h) {
-			mTxChList.erase(itr);
-			break;
+	mCnnTimer.kill();
+	if(mTxChList.size()>0 && mTxChList.front().handle==h) {
+		mTxChList.pop_front();
+		if(mTxChList.size()) {
+			reserveWrite();
+//			procWritable();
 		}
-	}
-	if(mTxChList.size()) {
-//		reserveWrite();
-		procWritable();
+
+		if(mTxChList.empty() && mRxChList.empty()){
+			startIdleTimer();
+		}
+	} else {
+		assert(mTxChList.size()>0 && mTxChList.front().handle==h);
 	}
 }
 
 void BaseConnection::endRxCh(uint32_t h) {
 	ald("end rx ch=%d", h);
+	if(mRxChList.size()>0 && mRxChList.front().handle == h) {
+		mRxChList.pop_front();
+		if(mTxChList.empty() && mRxChList.empty()){
+			startIdleTimer();
+		}
+	} else {
+		assert(mRxChList.size()>0 && mRxChList.front().handle==h);
+	}
+#if 0
 	for(auto itr=mRxChList.begin();itr != mRxChList.end(); itr++) {
 		if(itr->handle == h) {
 			mRxChList.erase(itr);
 			break;
 		}
 	}
+#endif
 }
 
 
@@ -265,7 +295,7 @@ void BaseConnection::removeRxChannel(uint32_t h) {
 	}
 }
 
-void BaseConnection::remoteTxChannel(uint32_t h) {
+void BaseConnection::removeTxChannel(uint32_t h) {
 	for(auto itr=mTxChList.begin(); itr != mTxChList.end(); itr++) {
 		if(itr->handle == h) {
 			mTxChList.erase(itr);
@@ -294,6 +324,50 @@ int BaseConnection::procClosed() {
 
 	if(mDefRxLis) mDefRxLis(CH_CLOSED);
 	return 0;
+}
+
+void BaseConnection::OnDisconnected() {
+	mCnnTimer.kill();
+	mSocket.close();
+	mSvrIp = 0;
+	mSvrPort = 0;
+	FSET_DISCNN();
+	procClosed();
+}
+
+void BaseConnection::OnIdle() {
+}
+
+void BaseConnection::startIdleTimer() {
+	mCnnTimer.set(5000, 0, [this](){
+		ald("idle timer expired...");
+		mCnnTimer.kill();
+		mSocket.close();
+		mSvrIp = 0;
+		mSvrPort = 0;
+		FSET_DISCNN();
+		OnIdle();
+	});
+}
+
+void BaseConnection::forceCloseChannel(uint32_t rx, uint32_t tx) {
+	ald("force close channel, rx=%d, tx=%d", rx, tx);
+	for(auto itr=mRxChList.begin(); itr!=mRxChList.end(); itr++) {
+		if(itr->handle == rx) {
+			mDummyChannels.splice(mDummyChannels.end(), mRxChList, itr);
+			break;
+		}
+	}
+
+	for(auto itr=mTxChList.begin(); itr!=mTxChList.end(); itr++) {
+		if(itr->handle == tx) {
+			mDummyChannels.splice(mDummyChannels.end(), mTxChList, itr);
+			break;
+		}
+	}
+	mSocket.close();
+	mCnnTimer.kill();
+	mLocalEvent.postEvent(0, 0, 0);
 }
 
 } /* namespace cahttp */
