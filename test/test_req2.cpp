@@ -784,6 +784,7 @@ TEST_F(Req2Test, reqman_idle_timer) {
 			man.close();
 			FDCHK_EV(fdn);
 		} else if(msg.msgid == EDM_TIMER) {
+			task.killTimer(1);
 			dummyCnt = man.dbgGetCnnDummyPoolSize();
 			task.postExit();
 		}

@@ -26,9 +26,9 @@ void SharedConnection::OnIdle() {
 
 
 void SharedConnection::OnDisconnected() {
-	BaseConnection::OnDisconnected();
 	ald("disconnected, ...");
 	mLis(mHandle);
+	mHandle = 0;
 }
 
 void SharedConnection::setRelLis(std::function<void(uint32_t)> lis) {

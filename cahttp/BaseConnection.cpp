@@ -188,10 +188,10 @@ void BaseConnection::init_sock(bool svr, int fd) {
 				procWritable();
 			} else if(event == NETEV_DISCONNECTED) {
 				ald("*** sock disconnected...");
-//				mCnnTimer.kill();
-//				mSocket.close();
-//				FSET_DISCNN();
-//				procClosed();
+				mCnnTimer.kill();
+				mSocket.close();
+				FSET_DISCNN();
+				procClosed();
 				OnDisconnected();
 			} else if(event == NETEV_READABLE) {
 				alv("sock readble");
@@ -327,12 +327,12 @@ int BaseConnection::procClosed() {
 }
 
 void BaseConnection::OnDisconnected() {
-	mCnnTimer.kill();
-	mSocket.close();
-	mSvrIp = 0;
-	mSvrPort = 0;
-	FSET_DISCNN();
-	procClosed();
+//	mCnnTimer.kill();
+//	mSocket.close();
+//	mSvrIp = 0;
+//	mSvrPort = 0;
+//	FSET_DISCNN();
+//	procClosed();
 }
 
 void BaseConnection::OnIdle() {
@@ -341,12 +341,9 @@ void BaseConnection::OnIdle() {
 void BaseConnection::startIdleTimer() {
 	mCnnTimer.set(5000, 0, [this](){
 		ald("idle timer expired...");
-		mCnnTimer.kill();
-		mSocket.close();
-		mSvrIp = 0;
-		mSvrPort = 0;
+		close();
 		FSET_DISCNN();
-		OnIdle();
+		OnDisconnected();
 	});
 }
 
