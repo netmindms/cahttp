@@ -22,7 +22,7 @@ endif()
 #set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-std=c++0x -O3 -Wall -fmessage-length=0 " )
 #set(CMAKE_CXX_FLAGS "-std=c++0x -pthread " )
 set(CMAKE_CXX_FLAGS "-std=c++0x -pthread -DMYPREP_BASE_FILE_NAME=\\\"$(<F)\\\" " )
-file(GLOB ALLSRCS "cahttp/*.cpp" "cahttp/*.cc" )
+file(GLOB ALLSRCS "cahttp/*.cpp" "cahttp/ext/nmdutil/*.cc" "cahttp/ext/nmdutil/*.cpp")
 
 add_library(cahttp SHARED ${ALLSRCS})
 target_link_libraries(cahttp "pthread" "ednio")

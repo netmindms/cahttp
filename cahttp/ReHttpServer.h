@@ -42,16 +42,20 @@ public:
 
 	int setUrlReg(http_method method, const std::string& pattern, UrlAlloctor);
 	int setUrlRegLam(http_method method, const std::string& pattern, std::function<void()> lis);
+
+#if  __GNUC__>= 4 && __GNUC_MINOR__>=9
 	template<typename T, typename ...ARG> int setUrlReg(http_method method, const std::string& pattern, ARG...args) {
 		return setUrlReg(method, pattern, [args...]() -> T* {
 			return new T(args...);
 		});
 	}
-//	template<typename T> int setUrlReg(http_method method, const std::string& pattern) {
-//		return setUrlReg(method, pattern, []() -> T* {
-//			return new T;
-//		});
-//	}
+#else
+	template<typename T> int setUrlReg(http_method method, const std::string& pattern) {
+		return setUrlReg(method, pattern, []() -> T* {
+			return new T;
+		});
+	}
+#endif
 
 	int start(int tasknum);
 	void close();
