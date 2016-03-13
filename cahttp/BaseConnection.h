@@ -80,11 +80,17 @@ public:
 			break;
 		}
 	};
+	std::pair<uint32_t, uint16_t> getRmtAddr() {
+		return {mSvrIp, mSvrPort};
+	}
+
+	bool isIdle() {
+		return (mTxChList.size() || mRxChList.size());
+	}
 private:
 	uint32_t mSvrIp;
 	uint16_t mSvrPort;
 	HttpMsgFrame2 mMsgFrame;
-	edft::EdSmartSocket mSocket;
 
 	size_t mBufSize;
 	char* mBuf;
@@ -109,7 +115,8 @@ private:
 	}
 	void forceCloseChannel(uint32_t rx, uint32_t tx);
 	void startIdleTimer();
-
+protected:
+	edft::EdSmartSocket mSocket;
 };
 
 } /* namespace cahttp */

@@ -14,6 +14,7 @@ namespace cahttp {
 
 class SharedConnection: public BaseConnection {
 	friend class ReqMan;
+	friend class HttpCnnMan;
 public:
 	SharedConnection();
 	virtual ~SharedConnection();
@@ -29,6 +30,9 @@ private:
 	void setHandle(uint32_t handle) {
 		mHandle = handle;
 	}
+	void terminate();
+	// explicit closing is not allowed.
+	void close() override;
 };
 
 } /* namespace cahttp */

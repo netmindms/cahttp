@@ -16,6 +16,7 @@ SharedConnection::SharedConnection() {
 }
 
 SharedConnection::~SharedConnection() {
+	ald("dest SharedConnection");
 }
 
 
@@ -26,13 +27,20 @@ void SharedConnection::OnIdle() {
 
 
 void SharedConnection::OnDisconnected() {
-	BaseConnection::OnDisconnected();
 	ald("disconnected, ...");
 	mLis(mHandle);
 }
 
 void SharedConnection::setRelLis(std::function<void(uint32_t)> lis) {
 	mLis = lis;
+}
+
+void SharedConnection::close() {
+	ali("ignore explicit closing...");
+}
+
+void SharedConnection::terminate() {
+	BaseConnection::close();
 }
 
 } /* namespace cahttp */

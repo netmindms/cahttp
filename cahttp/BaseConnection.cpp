@@ -38,6 +38,8 @@ BaseConnection::BaseConnection() {
 	mBufSize = 2048;
 	mStatusFlag = 0;
 	mHandleSeed=0;
+	mSvrIp = 0;
+	mSvrPort = 0;
 }
 
 BaseConnection::~BaseConnection() {
@@ -188,10 +190,10 @@ void BaseConnection::init_sock(bool svr, int fd) {
 				procWritable();
 			} else if(event == NETEV_DISCONNECTED) {
 				ald("*** sock disconnected...");
-//				mCnnTimer.kill();
-//				mSocket.close();
-//				FSET_DISCNN();
-//				procClosed();
+				mCnnTimer.kill();
+				mSocket.close();
+				FSET_DISCNN();
+				procClosed();
 				OnDisconnected();
 			} else if(event == NETEV_READABLE) {
 				alv("sock readble");
@@ -248,7 +250,7 @@ void BaseConnection::endTxCh(uint32_t h) {
 			startIdleTimer();
 		}
 	} else {
-		assert(mTxChList.size()>0 && mTxChList.front().handle==h);
+//		assert(mTxChList.size()>0 && mTxChList.front().handle==h);
 	}
 }
 
@@ -304,22 +306,17 @@ void BaseConnection::removeTxChannel(uint32_t h) {
 }
 
 int BaseConnection::procClosed() {
-	std::list<_chlis> dummy;
-	if(mRxChList.size()) {
-		dummy = move(mRxChList);
-		assert(mRxChList.empty());
-		for(auto &c : dummy) {
-			c.lis(CH_CLOSED);
-		}
-		dummy.clear();
+	std::list<_chlis> dummyrx;
+	std::list<_chlis> dummytx;
+	dummyrx.splice(dummyrx.begin(), mRxChList);
+	dummytx.splice(dummytx.begin(), mTxChList);
+
+	for(auto &c : dummyrx) {
+		c.lis(CH_CLOSED);
 	}
-	if(mTxChList.size()) {
-		dummy = move(mTxChList);
-		assert(mTxChList.empty());
-		for(auto &c : dummy) {
-			c.lis(CH_CLOSED);
-		}
-		dummy.clear();
+
+	for(auto &c : dummytx) {
+		c.lis(CH_CLOSED);
 	}
 
 	if(mDefRxLis) mDefRxLis(CH_CLOSED);
@@ -327,12 +324,12 @@ int BaseConnection::procClosed() {
 }
 
 void BaseConnection::OnDisconnected() {
-	mCnnTimer.kill();
-	mSocket.close();
-	mSvrIp = 0;
-	mSvrPort = 0;
-	FSET_DISCNN();
-	procClosed();
+//	mCnnTimer.kill();
+//	mSocket.close();
+//	mSvrIp = 0;
+//	mSvrPort = 0;
+//	FSET_DISCNN();
+//	procClosed();
 }
 
 void BaseConnection::OnIdle() {
@@ -341,17 +338,15 @@ void BaseConnection::OnIdle() {
 void BaseConnection::startIdleTimer() {
 	mCnnTimer.set(5000, 0, [this](){
 		ald("idle timer expired...");
-		mCnnTimer.kill();
-		mSocket.close();
-		mSvrIp = 0;
-		mSvrPort = 0;
+		close();
 		FSET_DISCNN();
-		OnIdle();
+		OnDisconnected();
 	});
 }
 
 void BaseConnection::forceCloseChannel(uint32_t rx, uint32_t tx) {
 	ald("force close channel, rx=%d, tx=%d", rx, tx);
+
 	for(auto itr=mRxChList.begin(); itr!=mRxChList.end(); itr++) {
 		if(itr->handle == rx) {
 			mDummyChannels.splice(mDummyChannels.end(), mRxChList, itr);
@@ -367,7 +362,10 @@ void BaseConnection::forceCloseChannel(uint32_t rx, uint32_t tx) {
 	}
 	mSocket.close();
 	mCnnTimer.kill();
-	mLocalEvent.postEvent(0, 0, 0);
+	mSvrIp = 0;
+	mSvrPort = 0;
+//	mLocalEvent.postEvent(0, 0, 0);
+	procClosed();
 }
 
 } /* namespace cahttp */

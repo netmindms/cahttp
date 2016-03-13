@@ -21,6 +21,8 @@
 
 namespace cahttp {
 
+class HttpCnnMan;
+
 class HttpReq {
 	friend class ReqMan;
 
@@ -49,7 +51,7 @@ public:
 	int request_get(const std::string& url, Lis lis);
 	int request_post(const std::string& url, Lis lis);
 	int request(http_method method, const char* url, const char *pdata=nullptr, size_t data_len=0, const std::string& ctype=CAS::CT_TEXT_PLAIN, Lis lis=nullptr);
-	int request(http_method method, const std::string& url, const std::string& data_len, const std::string& ctype, Lis lis=nullptr);
+	int request(http_method method, const std::string& url, const std::string& data, const std::string& ctype, Lis lis=nullptr);
 	int setContentFile(const char* path, const std::string& ctype);
 	void addHeader(const std::string& name, const std::string& val) {
 		mReqMsg.addHdr(name, val);
@@ -90,12 +92,15 @@ public:
 	inline void reserveWrite() {
 		mMsgTx.reserveWrite();
 	}
+	void setCnnMan(HttpCnnMan& cnnman) {
+		mpCnnMan = &cnnman;
+	}
 private:
 	status_t mStatus;
 	BaseMsg mReqMsg;
 	std::unique_ptr<BaseMsg> mupRespMsg;
 	std::string mRecvDataBuf;
-	BaseConnection *mpCnn;
+	std::shared_ptr<BaseConnection> mpCnn;
 	uint32_t mSvrIp;
 	uint16_t mSvrPort;
 	std::unique_ptr<BaseConnection> mPropCnn;
@@ -107,6 +112,7 @@ private:
 	MsgTransmitter mMsgTx;
 	edft::EdTimer mRespTimer;
 	uint16_t mRespTimeoutSec;
+	HttpCnnMan* mpCnnMan;
 
 	int procOnMsg();
 	int procOnData();
@@ -118,7 +124,8 @@ private:
 	}
 protected:
 	void setConnection(BaseConnection* pcnn) {
-		mpCnn = pcnn;
+		// TODO:
+//		mpCnn = pcnn;
 	}
 
 };
