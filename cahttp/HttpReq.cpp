@@ -18,6 +18,8 @@
 #include "BytePacketBuf.h"
 #include "TEEndPacketBuf.h"
 #include "BaseMsg.h"
+#include "BaseCnn.h"
+
 #include "HttpCnnMan.h"
 #include "ext/nmdutil/FileUtil.h"
 #include "ext/nmdutil/etcutil.h"
@@ -35,7 +37,6 @@ HttpReq::HttpReq() {
 	mSvrPort = 80;
 	mpCnn = nullptr;
 	mRecvDataCnt = 0;
-	mRxHandle = 0;
 	mStatus.val = 0;
 	mErr = ERR::eNoErr;
 	mRespTimeoutSec = 20; // 20 sec
@@ -67,74 +68,44 @@ int HttpReq::request(BaseMsg &msg) {
 	}
 
 	int ret;
-
-	if(mpCnn) {
-		auto addr = mpCnn->getRmtAddr();
-		if(addr.first != s_ip || addr.second != s_port) {
-			mpCnn.reset();
+	mpCnn = make_shared<BaseCnn>();
+	ret = mpCnn->connect(s_ip, s_port, 30000, [this](BaseCnn::CH_E evt) ->int {
+		alv("rx ch event=%d", (int)evt);
+		if(evt == BaseCnn::CH_E::CH_MSG) {
+			return procOnMsg();
+		} else if(evt == BaseCnn::CH_E::CH_DATA) {
+			return procOnData();
+		} else if(evt == BaseCnn::CH_E::CH_CLOSED) {
+			if(!mStatus.fin) {
+				alw("*** request early terminated");
+				mRespTimer.kill();
+				mErr = ERR::eEarlyDisconnected;
+				mStatus.fin = 1;
+				//						mMsgTx.close();
+				mLis(ON_END, mErr);
+			}
+			//					mMsgTx.close();
+			return 0;
 		} else {
-			ret = mpCnn->connect(s_ip, s_port, 30000);
+			assert(0);
+			return 1;
 		}
-	}
-	if(mpCnn==nullptr) {
-		if(mpCnnMan==nullptr) {
-			mpCnn = make_shared<BaseConnection>();
-			//			mPropCnn.reset(mpCnn);
-			ret = mpCnn->connect(s_ip, s_port, 30000);
-		} else {
-			auto cr = mpCnnMan->connect(s_ip, s_port);
-			mpCnn = cr.first;
-			ret = cr.second;
-		}
-	}
+	});
 	ald("connecting, ret=%d", ret);
+	mMsgTx.open(*mpCnn, nullptr);
 	if(ret) {
 		mRespTimer.set(mRespTimeoutSec*1000, 0, [this]() {
 			alw("*** response timeout");
 			mRespTimer.kill();
-			closeRxCh();
-			mMsgTx.close();
+//			closeRxCh();
+//			mMsgTx.close();
 			mStatus.fin = 1;
 			mErr = ERR::eNoResponse;
 			mLis(ON_END, mErr);
 		});
 	}
 	if (mpCnn) {
-		mRxHandle = mpCnn->openRxCh([this](BaseConnection::CH_E evt) ->int {
-			alv("rx ch event=%d", (int)evt);
-			if(evt == BaseConnection::CH_E::CH_MSG) {
-				return procOnMsg();
-			} else if(evt == BaseConnection::CH_E::CH_DATA) {
-				return procOnData();
-			} else if(evt == BaseConnection::CH_E::CH_CLOSED) {
-				if(!mStatus.fin) {
-					alw("*** request early terminated");
-					mRespTimer.kill();
-					mErr = ERR::eEarlyDisconnected;
-					mStatus.fin = 1;
-					mMsgTx.close();
-					mLis(ON_END, mErr);
-				}
-				mMsgTx.close();
-				return 0;
-			} else {
-				assert(0);
-				return 1;
-			}
-		});
-		ald("get rx ch=%d", mRxHandle);
-		if(mRxHandle==0) {
-			return -1;
-		}
-
-		mMsgTx.open(*mpCnn, [this](MsgTransmitter::TR event) {
-			if(event == MsgTransmitter::eSendOk || event == MsgTransmitter::eSendFail) {
-				mMsgTx.close();
-			} else if(event == MsgTransmitter::eDataNeeded) {
-				mLis(ON_SEND, 0);
-			}
-		});
-		return mMsgTx.sendMsg(msg);
+		mMsgTx.sendMsg(msg);
 	} else {
 		ale("### no connection,...");
 		assert(0);
@@ -183,10 +154,10 @@ int HttpReq::procOnMsg() {
 void HttpReq::close() {
 	mRespTimer.kill();
 	if(mpCnn) {
-		if(mRxHandle || mMsgTx.getTxChannel()) {
-			mpCnn->forceCloseChannel(mRxHandle, mMsgTx.getTxChannel());
-			mRxHandle=0;
-		}
+//		if(mRxHandle || mMsgTx.getTxChannel()) {
+//			mpCnn->forceCloseChannel(mRxHandle, mMsgTx.getTxChannel());
+//			mRxHandle=0;
+//		}
 
 		mpCnn->close();
 		mSvrIp = 0;
@@ -209,7 +180,7 @@ int HttpReq::procOnData() {
 	alv("proc on data, size=%ld", data.size());
 	if(data.size()==0) {
 		ald("empty data, consider as message end signal,");
-		mpCnn->endRxCh(mRxHandle); mRxHandle=0;
+//		mpCnn->endRxCh(mRxHandle); mRxHandle=0;
 		mStatus.fin = 1;
 //		mpCnn.reset();
 		mLis(ON_END, 0);
@@ -290,7 +261,7 @@ void HttpReq::setContentLen(int64_t longInt) {
 int HttpReq::clear() {
 	if(mStatus.used) {
 		if(mStatus.fin==1) {
-			assert(mRxHandle==0);
+//			assert(mRxHandle==0);
 			mStatus.val = 0;
 			mReqMsg.clear();
 			mupRespMsg.reset();

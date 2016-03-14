@@ -18,6 +18,8 @@
 #include "BaseMsg.h"
 #include "PacketBuf.h"
 #include "MsgTransmitter.h"
+#include "BaseCnn.h"
+#include "MsgSender.h"
 
 namespace cahttp {
 
@@ -100,16 +102,15 @@ private:
 	BaseMsg mReqMsg;
 	std::unique_ptr<BaseMsg> mupRespMsg;
 	std::string mRecvDataBuf;
-	std::shared_ptr<BaseConnection> mpCnn;
+	std::shared_ptr<BaseCnn> mpCnn;
 	uint32_t mSvrIp;
 	uint16_t mSvrPort;
 	std::unique_ptr<BaseConnection> mPropCnn;
-	uint32_t mRxHandle;
 
 	int64_t mRecvDataCnt;
 	Lis mLis;
 	ERR mErr;
-	MsgTransmitter mMsgTx;
+	MsgSender mMsgTx;
 	edft::EdTimer mRespTimer;
 	uint16_t mRespTimeoutSec;
 	HttpCnnMan* mpCnnMan;
@@ -119,9 +120,7 @@ private:
 	int procOnCnn(int status);
 	void setBasicHeader(BaseMsg& msg, http_method method);
 
-	inline void closeRxCh() {
-		mpCnn->endRxCh(mRxHandle); mRxHandle=0;
-	}
+
 protected:
 	void setConnection(BaseConnection* pcnn) {
 		// TODO:
