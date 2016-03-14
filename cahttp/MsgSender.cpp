@@ -36,15 +36,16 @@ MsgSender::MsgSender() {
 MsgSender::~MsgSender() {
 }
 
-int MsgSender::open(BaseCnn& cnn, std::function<void(TR)> lis) {
-	mLis = lis;
+int MsgSender::open(BaseCnn& cnn) {
+//	mLis = lis;
 	mpCnn = &cnn;
 	ald("open tx channel=%d", mTxChannel);
 	return (!mTxChannel);
 }
 
-int MsgSender::procOnWritable() {
+MsgSender::TR MsgSender::procOnWritable() {
 	alv("on writable");
+	TR res=eMsgContinue;
 	SR ret;
 	for (; mBufList.empty() == false;) {
 		auto *pktbuf = mBufList.front().get();
@@ -61,6 +62,7 @@ int MsgSender::procOnWritable() {
 					ald("*** chunk length write error");
 					stackTeByteBuf(buf.second, buf.first, true, true, true, true);
 					pktbuf->consume();
+					res = TR::eMsgContinue;
 					goto END_SEND;
 					break;
 				}
@@ -75,12 +77,14 @@ int MsgSender::procOnWritable() {
 						ald("*** fail writing chunk ending line");
 						stackTeByteBuf(nullptr, 0, false, false, true, true);
 						pktbuf->consume();
+						res = TR::eMsgContinue;
 						goto END_SEND;
 						break;
 					}
 				}
 				pktbuf->consume();
 				if (ret == SR::ePending) {
+					res = TR::eMsgContinue;
 					goto END_SEND;
 					break;
 				}
@@ -89,7 +93,6 @@ int MsgSender::procOnWritable() {
 				if (mStatus.te && pktbuf->getType() == 1) {
 					stackTeByteBuf(buf.second, buf.first, false, true, true, true);
 					pktbuf->consume();
-					usleep(3 * 1000 * 1000);
 					goto END_SEND;
 					break;
 				}
@@ -103,15 +106,18 @@ int MsgSender::procOnWritable() {
 	alv("  buf list count=%d", mBufList.size());
 	if (mBufList.empty() == true) {
 		if (mStatus.final && mStatus.se) {
-			mLis(TR::eSendOk);
+//			mLis(TR::eSendOk);
+			res = TR::eMsgSendOk;
+			mpCnn->sendEnd();
 		} else {
 			if(mStatus.phase) {
-				mLis(TR::eDataNeeded);
+//				mLis(TR::eDataNeeded);
+				res = TR::eMsgDataNeeded;
 			}
 		}
 	}
-	END_SEND: ;
-	return 0;
+	END_SEND:
+	return res;
 }
 
 
@@ -136,13 +142,15 @@ int MsgSender::sendMsg(BaseMsg& msg) {
 	}
 	if(sret == SR::eOk) {
 		if(mStatus.se) {
-			mLis(MsgSender::eSendOk);
+//			mLis(MsgSender::eSendOk);
+			mpCnn->sendEnd();
 		}
 	} else if(sret == SR::eNext) {
 		stackSendBuf(move(s), 0);
 	} else if(sret == SR::eFail) {
 		ale("### send msg error");
-		mLis(MsgSender::eSendFail);
+//		mLis(MsgSender::eSendFail);
+		mpCnn->sendEnd();
 		assert(0);
 		return -1;
 	}
@@ -160,7 +168,8 @@ int MsgSender::sendContent(const char* ptr, size_t len) {
 			endData();
 		}
 		if(mStatus.se && mBufList.empty()) {
-			mLis(eSendOk);
+//			mLis(eSendOk);
+			mpCnn->sendEnd();
 		}
 		return 0;
 	} else {
@@ -224,9 +233,9 @@ SR MsgSender::sendData(const char* ptr, size_t len, bool buffering) {
 					mStatus.se = 1;
 				}
 			}
-			return ePending;
+			return SR::ePending;
 		} else {
-			return eNext;
+			return SR::eNext;
 		}
 	}
 

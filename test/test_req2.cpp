@@ -15,7 +15,7 @@
 #include "../cahttp/HttpReq.h"
 #include "../cahttp/flog.h"
 #include "../cahttp/CaHttpCommon.h"
-#include "../cahttp/ReqMan.h"
+//#include "../cahttp/ReqMan.h"
 #include "../cahttp/AsyncFile.h"
 #include "../cahttp/HttpCnnMan.h"
 

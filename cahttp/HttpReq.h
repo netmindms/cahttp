@@ -105,7 +105,6 @@ private:
 	std::shared_ptr<BaseCnn> mpCnn;
 	uint32_t mSvrIp;
 	uint16_t mSvrPort;
-	std::unique_ptr<BaseConnection> mPropCnn;
 
 	int64_t mRecvDataCnt;
 	Lis mLis;

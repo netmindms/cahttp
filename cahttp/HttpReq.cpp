@@ -86,19 +86,22 @@ int HttpReq::request(BaseMsg &msg) {
 			}
 			//					mMsgTx.close();
 			return 0;
+		} else if(evt == BaseCnn::CH_E::CH_WRITABLE) {
+			auto r = mMsgTx.procOnWritable();
+			if(r == MsgSender::eMsgDataNeeded) {
+				mLis(ON_SEND, 0);
+			}
 		} else {
 			assert(0);
 			return 1;
 		}
 	});
 	ald("connecting, ret=%d", ret);
-	mMsgTx.open(*mpCnn, nullptr);
+	mMsgTx.open(*mpCnn);
 	if(ret) {
 		mRespTimer.set(mRespTimeoutSec*1000, 0, [this]() {
 			alw("*** response timeout");
 			mRespTimer.kill();
-//			closeRxCh();
-//			mMsgTx.close();
 			mStatus.fin = 1;
 			mErr = ERR::eNoResponse;
 			mLis(ON_END, mErr);
@@ -154,20 +157,11 @@ int HttpReq::procOnMsg() {
 void HttpReq::close() {
 	mRespTimer.kill();
 	if(mpCnn) {
-//		if(mRxHandle || mMsgTx.getTxChannel()) {
-//			mpCnn->forceCloseChannel(mRxHandle, mMsgTx.getTxChannel());
-//			mRxHandle=0;
-//		}
-
 		mpCnn->close();
 		mSvrIp = 0;
 		mSvrPort = 0;
 		mStatus.val = 0;
 		clear();
-	}
-	if(mPropCnn) {
-		mPropCnn->close();
-//		mPropCnn.reset();
 	}
 }
 
@@ -180,9 +174,8 @@ int HttpReq::procOnData() {
 	alv("proc on data, size=%ld", data.size());
 	if(data.size()==0) {
 		ald("empty data, consider as message end signal,");
-//		mpCnn->endRxCh(mRxHandle); mRxHandle=0;
 		mStatus.fin = 1;
-//		mpCnn.reset();
+		mpCnn->recvEnd();
 		mLis(ON_END, 0);
 		return 0;
 	}

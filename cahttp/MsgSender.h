@@ -20,13 +20,14 @@ namespace cahttp {
 class MsgSender {
 public:
 	enum TR {
-		eSendOk,
-		eSendFail,
-		eDataNeeded,
+		eMsgSendOk,
+		eMsgContinue,
+		eMsgSendFail,
+		eMsgDataNeeded,
 	};
 	MsgSender();
 	virtual ~MsgSender();
-	int open(BaseCnn& cnn, std::function<void(TR)> lis);
+	int open(BaseCnn& cnn);
 	int sendMsg(BaseMsg& msg);
 //	SR sendData(const char* ptr, size_t len);
 	SR sendData(const char* ptr, size_t len, bool buffering);
@@ -40,6 +41,7 @@ public:
 		return mTxChannel;
 	}
 	void reserveWrite();
+	TR procOnWritable();
 private:
 	union status_t {
 		uint8_t val;
@@ -53,7 +55,6 @@ private:
 	};
 	uint32_t mTxChannel;
 	BaseCnn* mpCnn;
-	std::function<void(TR)> mLis;
 	status_t mStatus;
 	std::list<std::unique_ptr<PacketBuf>> mBufList;
 	int64_t mSendDataCnt;
@@ -65,7 +66,7 @@ private:
 //		mpCnn->removeTxChannel(mTxChannel);
 //		mTxChannel = 0;
 	};
-	int procOnWritable();
+
 	void stackTeByteBuf(const char* ptr, size_t len, bool head, bool body, bool tail, bool front);
 	void stackSendBuf(std::string&& s, int type);
 	void stackSendBuf(const char* ptr, size_t len, int type);
