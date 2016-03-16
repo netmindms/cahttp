@@ -944,7 +944,7 @@ TEST_F(Req2Test, forceclose) {
 	task.runMain();
 }
 
-
+#if 0
 TEST_F(Req2Test, cnnman) {
 	EdTask task;
 	HttpReq req;
@@ -1193,5 +1193,5 @@ TEST_F(Req2Test, perf) {
 	Reqs.clear();
 }
 
-
+#endif
 

@@ -13,34 +13,33 @@
 #include "BytePacketBuf.h"
 #include "flog.h"
 
+#if 0
 #define cle(fmt, ...) ale("h:%03d " fmt , mTxChannel, ## __VA_ARGS__)
 #define clw(fmt, ...) alw("h:%03d " fmt , mTxChannel, ## __VA_ARGS__)
 #define cln(fmt, ...) aln("h:%03d " fmt , mTxChannel, ## __VA_ARGS__)
 #define cli(fmt, ...) ali("h:%03d " fmt , mTxChannel, ## __VA_ARGS__)
 #define cld(fmt, ...) ald("h:%03d " fmt , mTxChannel, ## __VA_ARGS__)
 #define clv(fmt, ...) alv("h:%03d " fmt , mTxChannel, ## __VA_ARGS__)
-
+#endif
 
 namespace cahttp {
 
 MsgSender::MsgSender() {
 	mpCnn = nullptr;
-	mTxChannel = 0;
 	mStatus.val = 0;
 	mSendDataCnt = 0;
 	mContentLen = 0;
 	mRecvDataCnt = 0;
-	mTxChannel=0;
+//	mTxChannel=0;
 }
 
 MsgSender::~MsgSender() {
 }
 
 int MsgSender::open(BaseCnn& cnn) {
-//	mLis = lis;
 	mpCnn = &cnn;
-	ald("open tx channel=%d", mTxChannel);
-	return (!mTxChannel);
+	ald("open msg sender");
+	return 0;
 }
 
 MsgSender::TR MsgSender::procOnWritable() {
@@ -123,7 +122,7 @@ MsgSender::TR MsgSender::procOnWritable() {
 
 int MsgSender::sendMsg(BaseMsg& msg) {
 	if(mStatus.phase) {
-		cle("### not sending msg phase");
+		ale("### not sending msg phase");
 		return -1;
 	}
 	mSendDataCnt = 0;
@@ -173,7 +172,7 @@ int MsgSender::sendContent(const char* ptr, size_t len) {
 		}
 		return 0;
 	} else {
-		cle("*** can't send data, sending content is already complete.");
+		ale("*** can't send data, sending content is already complete.");
 		return -1;
 	}
 }
@@ -194,7 +193,7 @@ int MsgSender::sendContent(std::unique_ptr<PacketBuf> upbuf) {
 		mpCnn->reserveWrite();
 		return 0;
 	} else {
-		cle("### mismatch content length, msg_len=%ld, sending_len=%ld", mContentLen, upbuf->remain());
+		ale("### mismatch content length, msg_len=%ld, sending_len=%ld", mContentLen, upbuf->remain());
 		return -1;
 	}
 
@@ -309,9 +308,9 @@ void MsgSender::stackSendBuf(std::string&& s, int type) {
 }
 
 void MsgSender::close() {
-	if(mTxChannel) {
+//	if(mTxChannel) {
 //		mpCnn->endTxCh(mTxChannel); mTxChannel=0;
-	}
+//	}
 
 	mStatus.val = 0;
 }
@@ -336,7 +335,7 @@ void MsgSender::stackSendBuf(const char* ptr, size_t len, int type) {
 
 
 void MsgSender::reserveWrite() {
-	if(!mStatus.se && mTxChannel) {
+	if(!mStatus.se) {
 		mpCnn->reserveWrite();
 	}
 }

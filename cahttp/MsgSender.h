@@ -37,9 +37,9 @@ public:
 	int sendContentFile(const char* path);
 	void endData();
 	void close();
-	inline int getTxChannel() const {
-		return mTxChannel;
-	}
+//	inline int getTxChannel() const {
+//		return mTxChannel;
+//	}
 	void reserveWrite();
 	TR procOnWritable();
 private:
@@ -53,7 +53,6 @@ private:
 			uint8_t final: 1;
 		};
 	};
-	uint32_t mTxChannel;
 	BaseCnn* mpCnn;
 	status_t mStatus;
 	std::list<std::unique_ptr<PacketBuf>> mBufList;
