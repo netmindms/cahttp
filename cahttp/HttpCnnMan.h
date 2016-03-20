@@ -10,7 +10,7 @@
 
 #include <memory>
 
-#include "SharedConnection.h"
+#include "SharedCnn.h"
 namespace cahttp {
 
 class HttpCnnMan {
@@ -23,7 +23,7 @@ public:
 	};
 	HttpCnnMan();
 	virtual ~HttpCnnMan();
-	std::pair<std::shared_ptr<SharedConnection>, int> connect(uint32_t ip, uint16_t port);
+	std::pair<std::shared_ptr<SharedCnn>, int> connect(uint32_t ip, uint16_t port);
 	size_t getPoolSize() {
 		return mCnnPool.size();
 	}
@@ -33,7 +33,7 @@ public:
 	void close();
 private:
 	cfg_t mCfg;
-	std::list<std::shared_ptr<SharedConnection>> mCnnPool;
+	std::list<std::shared_ptr<SharedCnn>> mCnnPool;
 	uint32_t mHandleSeed;
 };
 

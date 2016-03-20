@@ -44,7 +44,7 @@ int MsgSender::open(BaseCnn& cnn) {
 
 MsgSender::TR MsgSender::procOnWritable() {
 	alv("on writable");
-	TR res=eMsgContinue;
+	TR res=kMsgContinue;
 	SR ret;
 	for (; mBufList.empty() == false;) {
 		auto *pktbuf = mBufList.front().get();
@@ -61,7 +61,7 @@ MsgSender::TR MsgSender::procOnWritable() {
 					ald("*** chunk length write error");
 					stackTeByteBuf(buf.second, buf.first, true, true, true, true);
 					pktbuf->consume();
-					res = TR::eMsgContinue;
+					res = TR::kMsgContinue;
 					goto END_SEND;
 					break;
 				}
@@ -76,14 +76,14 @@ MsgSender::TR MsgSender::procOnWritable() {
 						ald("*** fail writing chunk ending line");
 						stackTeByteBuf(nullptr, 0, false, false, true, true);
 						pktbuf->consume();
-						res = TR::eMsgContinue;
+						res = TR::kMsgContinue;
 						goto END_SEND;
 						break;
 					}
 				}
 				pktbuf->consume();
 				if (ret == SR::ePending) {
-					res = TR::eMsgContinue;
+					res = TR::kMsgContinue;
 					goto END_SEND;
 					break;
 				}
@@ -106,12 +106,12 @@ MsgSender::TR MsgSender::procOnWritable() {
 	if (mBufList.empty() == true) {
 		if (mStatus.final && mStatus.se) {
 //			mLis(TR::eSendOk);
-			res = TR::eMsgSendOk;
+			res = TR::kMsgSendOk;
 			mpCnn->sendEnd();
 		} else {
 			if(mStatus.phase) {
 //				mLis(TR::eDataNeeded);
-				res = TR::eMsgDataNeeded;
+				res = TR::kMsgDataNeeded;
 			}
 		}
 	}
@@ -322,6 +322,15 @@ int MsgSender::sendContentFile(const char* path) {
 		r = sendContent(move(pbuf));
 	}
 	return r;
+}
+
+void MsgSender::clear() {
+	mStatus.val = 0;
+	mBufList.clear();
+	mSendDataCnt = 0;
+	mRecvDataCnt = 0;
+	mContentLen = 0;
+	mRecvDataBuf = "";
 }
 
 void MsgSender::stackSendBuf(const char* ptr, size_t len, int type) {

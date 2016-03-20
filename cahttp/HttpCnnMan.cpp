@@ -21,7 +21,7 @@ HttpCnnMan::~HttpCnnMan() {
 	// TODO Auto-generated destructor stub
 }
 
-std::pair<std::shared_ptr<SharedConnection>, int> HttpCnnMan::connect(uint32_t ip, uint16_t port) {
+std::pair<std::shared_ptr<BaseCnn>, int> HttpCnnMan::connect(uint32_t ip, uint16_t port) {
 	for(auto &c: mCnnPool) {
 		auto addr = c->getRmtAddr();
 		if(addr.first == ip && addr.second == port) {

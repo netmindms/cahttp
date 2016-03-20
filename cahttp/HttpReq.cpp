@@ -68,8 +68,25 @@ int HttpReq::request(BaseMsg &msg) {
 	}
 
 	int ret;
-	mpCnn = make_shared<BaseCnn>();
-	ret = mpCnn->connect(s_ip, s_port, 30000, [this](BaseCnn::CH_E evt) ->int {
+	if(mpCnn) {
+		auto addr = mpCnn->getRmtAddr();
+		if(addr.first != s_ip || addr.second != s_port) {
+			mpCnn.reset();
+		}
+	}
+
+	if(!mpCnn) {
+		if(!mpCnnMan) {
+			mpCnn = make_shared<BaseCnn>();
+			ret = mpCnn->connect(s_ip, s_port, 30000, nullptr);
+		} else {
+			auto cnn = mpCnnMan->connect(s_ip, s_port);
+			mpCnn = cnn.first;
+			ret = cnn.second;
+		}
+	}
+
+	mpCnn->setOnListener([this](BaseCnn::CH_E evt) ->int {
 		alv("rx ch event=%d", (int)evt);
 		if(evt == BaseCnn::CH_E::CH_MSG) {
 			return procOnMsg();
@@ -88,7 +105,7 @@ int HttpReq::request(BaseMsg &msg) {
 			return 0;
 		} else if(evt == BaseCnn::CH_E::CH_WRITABLE) {
 			auto r = mMsgTx.procOnWritable();
-			if(r == MsgSender::eMsgDataNeeded) {
+			if(r == MsgSender::kMsgDataNeeded) {
 				mLis(ON_SEND, 0);
 			}
 		} else {
@@ -254,13 +271,13 @@ void HttpReq::setContentLen(int64_t longInt) {
 int HttpReq::clear() {
 	if(mStatus.used) {
 		if(mStatus.fin==1) {
-//			assert(mRxHandle==0);
 			mStatus.val = 0;
 			mReqMsg.clear();
 			mupRespMsg.reset();
 			mRecvDataBuf.clear();
 			mRecvDataCnt=0;
 			mErr = ERR::eNoErr;
+			mMsgTx.clear();
 			return 0;
 		} else {
 			ale("### clearing not available in request active state");

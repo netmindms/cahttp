@@ -87,6 +87,7 @@ public:
 	bool isIdle() {
 		return (mTxChList.size() || mRxChList.size());
 	}
+	void forceCloseChannel(uint32_t rx, uint32_t tx);
 private:
 	uint32_t mSvrIp;
 	uint16_t mSvrPort;
@@ -113,7 +114,7 @@ private:
 	void setDefRxListener(ChLis lis) {
 		mDefRxLis = lis;
 	}
-	void forceCloseChannel(uint32_t rx, uint32_t tx);
+
 	void startIdleTimer();
 protected:
 	edft::EdSmartSocket mSocket;

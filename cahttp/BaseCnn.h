@@ -87,7 +87,7 @@ public:
 		return {mSvrIp, mSvrPort};
 	}
 
-private:
+protected:
 	status_t mStatus;
 	uint32_t mSvrIp;
 	uint16_t mSvrPort;

@@ -20,10 +20,10 @@ namespace cahttp {
 class MsgSender {
 public:
 	enum TR {
-		eMsgSendOk,
-		eMsgContinue,
-		eMsgSendFail,
-		eMsgDataNeeded,
+		kMsgSendOk,
+		kMsgContinue,
+		kMsgSendFail,
+		kMsgDataNeeded,
 	};
 	MsgSender();
 	virtual ~MsgSender();
@@ -42,6 +42,7 @@ public:
 //	}
 	void reserveWrite();
 	TR procOnWritable();
+	void clear();
 private:
 	union status_t {
 		uint8_t val;
