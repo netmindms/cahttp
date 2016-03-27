@@ -88,6 +88,16 @@ public:
 		return (mTxChList.size() || mRxChList.size());
 	}
 	void forceCloseChannel(uint32_t rx, uint32_t tx);
+	void setHandle(uint32_t handle) {
+		mHandle = handle;
+	}
+	uint32_t getHandle() {
+		return mHandle;
+	}
+	void setDefRxListener(ChLis lis) {
+		mDefRxLis = lis;
+	}
+
 private:
 	uint32_t mSvrIp;
 	uint16_t mSvrPort;
@@ -105,15 +115,12 @@ private:
 	ChLis mDefRxLis;
 	std::list<_chlis> mDummyChannels;
 	edft::EdLocalEvent mLocalEvent;
-
+	uint32_t mHandle;
 
 	int procRead();
 	void init_sock(bool svr, int fd);
 	int procWritable();
 	int procClosed();
-	void setDefRxListener(ChLis lis) {
-		mDefRxLis = lis;
-	}
 
 	void startIdleTimer();
 protected:

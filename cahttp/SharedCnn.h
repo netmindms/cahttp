@@ -7,6 +7,7 @@
 
 #ifndef CAHTTP_SHAREDCNN_H_
 #define CAHTTP_SHAREDCNN_H_
+#include <memory>
 #include "BaseCnn.h"
 
 namespace cahttp {
@@ -24,6 +25,7 @@ public:
 	virtual void sendEnd();
 	virtual void recvEnd();
 	virtual void close();
+	void openSharedCnn(std::shared_ptr<BaseConnection> spcnn);
 private:
 	uint32_t mHandle;
 	HttpCnnMan* mpCnnMan;

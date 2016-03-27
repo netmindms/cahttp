@@ -77,11 +77,11 @@ int HttpReq::request(BaseMsg &msg) {
 
 	if(!mpCnn) {
 		if(!mpCnnMan) {
-			mpCnn = make_shared<BaseCnn>();
+			mpCnn.reset(new BaseCnn);
 			ret = mpCnn->connect(s_ip, s_port, 30000, nullptr);
 		} else {
 			auto cnn = mpCnnMan->connect(s_ip, s_port);
-			mpCnn = cnn.first;
+			mpCnn = move(cnn.first);
 			ret = cnn.second;
 		}
 	}

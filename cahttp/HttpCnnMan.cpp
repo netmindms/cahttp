@@ -9,6 +9,9 @@
 #include "HttpCnnMan.h"
 #include "flog.h"
 #include "ext/nmdutil/netutil.h"
+#include "BaseConnection.h"
+
+using namespace std;
 
 namespace cahttp {
 
@@ -21,47 +24,48 @@ HttpCnnMan::~HttpCnnMan() {
 	// TODO Auto-generated destructor stub
 }
 
-std::pair<std::shared_ptr<BaseCnn>, int> HttpCnnMan::connect(uint32_t ip, uint16_t port) {
+pair<unique_ptr<SharedCnn>, int> HttpCnnMan::connect(uint32_t ip, uint16_t port) {
+	shared_ptr<BaseConnection> spcnn;
 	for(auto &c: mCnnPool) {
 		auto addr = c->getRmtAddr();
 		if(addr.first == ip && addr.second == port) {
-			if(!mCfg.pipelining) {
-				if(c->isIdle()==false) {
-					auto r = c->connect(ip, port);
-					return {c, r};
-					break;
-				}
-			} else {
-				auto r = c->connect(ip, port);
-				return {c, r};
-				break;
-			}
+			spcnn = c;
+			break;
 		}
 	}
 
-	auto pcnn = std::make_shared<SharedConnection>();
-	if(++mHandleSeed==0) mHandleSeed++;
-	pcnn->setHandle(mHandleSeed);
-	pcnn->setRelLis([this](uint32_t handle) {
-		for(auto itr=mCnnPool.begin(); itr!=mCnnPool.end(); itr++) {
-			if((*itr)->getHandle()==handle) {
-				ald("cnn ref_count=%ld", (*itr).use_count());
-				(*itr)->terminate();
-				ald("delete connection, handle=%ld, pool_size=%d", handle, mCnnPool.size());
-				mCnnPool.erase(itr);
-				break;
+
+	if(spcnn==nullptr) {
+		// not found
+		spcnn = make_shared<BaseConnection>();
+		if(++mHandleSeed==0) mHandleSeed++;
+		auto handle = mHandleSeed;
+		spcnn->setHandle(handle);
+		spcnn->setDefRxListener([this, handle](BaseConnection::CH_E evt) {
+			for(auto itr=mCnnPool.begin(); itr!=mCnnPool.end(); itr++) {
+				if((*itr)->getHandle()==handle) {
+					ald("cnn ref_count=%ld", (*itr).use_count());
+					(*itr)->close();
+					ald("delete connection, handle=%ld, pool_size=%d", handle, mCnnPool.size());
+					mCnnPool.erase(itr);
+					break;
+				}
 			}
-		}
-	});
-	mCnnPool.push_back(pcnn);
-	ali("new shared connection for %s:%d, cnt=%ld", cahttpu::Ip2Str(ip), port, mCnnPool.size());
-	auto r = pcnn->connect(ip, port, 30000);
-	return {pcnn, r};
+			return 0;
+		});
+		mCnnPool.push_back(spcnn);
+		ali("new shared connection for %s:%d, cnt=%ld", cahttpu::Ip2Str(ip), port, mCnnPool.size());
+	}
+
+	auto cret = spcnn->connect(ip, port);
+	unique_ptr<SharedCnn> upcnn(new SharedCnn);
+	upcnn->openSharedCnn(spcnn);
+	return {move(upcnn), cret};
 }
 
 void HttpCnnMan::close() {
 	for(auto &c: mCnnPool) {
-		c->terminate();
+		c->close();
 	}
 	mCnnPool.clear();
 }

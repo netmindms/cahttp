@@ -102,7 +102,7 @@ private:
 	BaseMsg mReqMsg;
 	std::unique_ptr<BaseMsg> mupRespMsg;
 	std::string mRecvDataBuf;
-	std::shared_ptr<BaseCnn> mpCnn;
+	std::unique_ptr<BaseCnn> mpCnn;
 	uint32_t mSvrIp;
 	uint16_t mSvrPort;
 

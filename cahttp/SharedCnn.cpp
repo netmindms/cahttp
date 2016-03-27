@@ -9,6 +9,8 @@
 #include "BaseConnection.h"
 #include "HttpCnnMan.h"
 
+using namespace std;
+
 namespace cahttp {
 
 SharedCnn::SharedCnn() {
@@ -38,25 +40,23 @@ void SharedCnn::setHttpCnnMan(HttpCnnMan& cnnman) {
 }
 
 int SharedCnn::connect(uint32_t ip, int port, int timeout, std::function<void(CH_E)> lis) {
-	mLis = lis;
-	auto res = mpCnnMan->connect(ip, port);
-	mpPipeCnn = res.first;
-	mpPipeCnn->openRxCh([this](BaseConnection::CH_E evt) {
-		if(evt == CH_E::CH_MSG) {
-			mRecvMsg.reset( mpPipeCnn->fetchMsg());
-			mLis(BaseCnn::CH_MSG);
-		} else if(evt == CH_E::CH_DATA) {
-//			mRecvData = m
-		}
-		return 0;
-	});
-	return res.second;
+	return 0;
 }
 
 void SharedCnn::close() {
 	if(mRxCh || mTxCh) {
 		mpPipeCnn->forceCloseChannel(mRxCh, mTxCh);
 	}
+}
+
+
+void SharedCnn::openSharedCnn(shared_ptr<BaseConnection> spcnn) {
+	mRxCh = spcnn->openRxCh([this](BaseConnection::CH_E evt) {
+		return 0;
+	});
+	mTxCh = spcnn->openTxCh([this](BaseConnection::CH_E evt) {
+		return 0;
+	});
 }
 
 } /* namespace cahttp */
