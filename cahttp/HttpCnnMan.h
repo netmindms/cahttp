@@ -31,6 +31,10 @@ public:
 		mCfg.pipelining = pipe;
 	};
 	void close();
+
+	// idx: connection index in list
+	std::pair<size_t, size_t> getChannelCount(size_t idx);
+
 private:
 	cfg_t mCfg;
 	std::list<std::shared_ptr<BaseConnection>> mCnnPool;

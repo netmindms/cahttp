@@ -944,11 +944,11 @@ TEST_F(Req2Test, forceclose) {
 	task.runMain();
 }
 
-#if 0
 TEST_F(Req2Test, cnnman) {
 	EdTask task;
 	HttpReq req;
 	HttpCnnMan cnnMan;
+	string respData;
 	int respStatus=0;
 	task.setOnListener([&](EdMsg &msg) {
 		if(msg.msgid == EDM_INIT) {
@@ -957,7 +957,12 @@ TEST_F(Req2Test, cnnman) {
 			req.request(HTTP_POST, "http://localhost:7000/echo", "echo", CAS::CT_APP_OCTET, [&](HttpReq::Event evt, int err) {
 				if(evt == HttpReq::ON_END) {
 					respStatus = req.getRespStatus();
-					task.setTimer(1, 1000);
+					auto chcnt = cnnMan.getChannelCount(0);
+					assert(chcnt.first==0);
+					assert(chcnt.second==0);
+					task.postExit();
+				} else if(evt == HttpReq::ON_DATA) {
+					respData.append( req.fetchData() );
 				}
 			});
 		} else if(msg.msgid == EDM_CLOSE) {
@@ -974,7 +979,11 @@ TEST_F(Req2Test, cnnman) {
 	});
 	task.runMain();
 	ASSERT_EQ(respStatus, 200);
+	ASSERT_STREQ(respData.c_str(), "echo");
 }
+
+
+
 
 TEST_F(Req2Test, cnnman_pipe) {
 	EdTask task;
@@ -1022,7 +1031,7 @@ TEST_F(Req2Test, cnnman_pipe) {
 	ASSERT_STREQ(rs2Data.c_str(), "echo2");
 }
 
-
+#if 0
 
 TEST_F(Req2Test, cnnman_force_close) {
 	EdTask task;

@@ -98,6 +98,8 @@ public:
 		mDefRxLis = lis;
 	}
 
+	size_t getRxChCount();
+	size_t getTxChCount();
 private:
 	uint32_t mSvrIp;
 	uint16_t mSvrPort;

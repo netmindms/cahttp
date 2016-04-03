@@ -42,13 +42,16 @@ pair<unique_ptr<SharedCnn>, int> HttpCnnMan::connect(uint32_t ip, uint16_t port)
 		auto handle = mHandleSeed;
 		spcnn->setHandle(handle);
 		spcnn->setDefRxListener([this, handle](BaseConnection::CH_E evt) {
-			for(auto itr=mCnnPool.begin(); itr!=mCnnPool.end(); itr++) {
-				if((*itr)->getHandle()==handle) {
-					ald("cnn ref_count=%ld", (*itr).use_count());
-					(*itr)->close();
-					ald("delete connection, handle=%ld, pool_size=%d", handle, mCnnPool.size());
-					mCnnPool.erase(itr);
-					break;
+			if(evt == BaseConnection::CH_CLOSED) {
+				ald("disconnected pipeline cnn, handle=%ld", handle);
+				for(auto itr=mCnnPool.begin(); itr!=mCnnPool.end(); itr++) {
+					if((*itr)->getHandle()==handle) {
+						ald("cnn ref_count=%ld", (*itr).use_count());
+						(*itr)->close();
+						ald("delete connection, handle=%ld, pool_size=%d", handle, mCnnPool.size());
+						mCnnPool.erase(itr);
+						break;
+					}
 				}
 			}
 			return 0;
@@ -68,6 +71,17 @@ void HttpCnnMan::close() {
 		c->close();
 	}
 	mCnnPool.clear();
+}
+
+pair<size_t, size_t> HttpCnnMan::getChannelCount(size_t idx) {
+	if(idx < mCnnPool.size()) {
+		auto itr = mCnnPool.begin();
+		for(auto i=0;i<idx;i++) itr++;
+		return { (*itr)->getRxChCount(), (*itr)->getTxChCount() };
+	} else {
+		assert(0);
+		return {0, 0};
+	}
 }
 
 } /* namespace cahttp */

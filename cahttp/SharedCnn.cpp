@@ -22,6 +22,7 @@ SharedCnn::SharedCnn() {
 }
 
 SharedCnn::~SharedCnn() {
+	close();
 }
 
 cahttp::SR SharedCnn::send(const char* buf, size_t len) {
@@ -47,14 +48,34 @@ void SharedCnn::close() {
 	if(mRxCh || mTxCh) {
 		mpPipeCnn->forceCloseChannel(mRxCh, mTxCh);
 	}
+	mpPipeCnn.reset();
 }
 
 
 void SharedCnn::openSharedCnn(shared_ptr<BaseConnection> spcnn) {
+	mpPipeCnn = spcnn;
 	mRxCh = spcnn->openRxCh([this](BaseConnection::CH_E evt) {
+		if(evt == BaseConnection::CH_MSG) {
+			auto pmsg = mpPipeCnn->fetchMsg();
+			mRecvMsg.reset(pmsg);
+			mLis(BaseCnn::CH_MSG);
+		} else if(evt == BaseConnection::CH_DATA) {
+			mRecvData.clear();
+			mRecvData = mpPipeCnn->fetchData();
+			mLis(BaseCnn::CH_DATA);
+		} else if(evt == BaseConnection::CH_CLOSED) {
+			mRxCh = 0;
+			procClosed();
+		}
 		return 0;
 	});
 	mTxCh = spcnn->openTxCh([this](BaseConnection::CH_E evt) {
+		if(evt == BaseConnection::CH_WRITABLE) {
+			procWritable();
+		} else if(evt == BaseConnection::CH_CLOSED) {
+			mTxCh = 0;
+			procClosed();
+		}
 		return 0;
 	});
 }

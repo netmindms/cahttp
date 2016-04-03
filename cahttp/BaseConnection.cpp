@@ -368,4 +368,13 @@ void BaseConnection::forceCloseChannel(uint32_t rx, uint32_t tx) {
 	procClosed();
 }
 
+
+size_t BaseConnection::getRxChCount() {
+	return mRxChList.size();
+}
+
+size_t BaseConnection::getTxChCount() {
+	return mTxChList.size();
+}
+
 } /* namespace cahttp */
