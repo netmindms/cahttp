@@ -18,7 +18,7 @@
 #include "BytePacketBuf.h"
 #include "TEEndPacketBuf.h"
 #include "BaseMsg.h"
-#include "BaseCnn.h"
+#include "SimpleCnn.h"
 
 #include "HttpCnnMan.h"
 #include "ext/nmdutil/FileUtil.h"
@@ -77,7 +77,7 @@ int HttpReq::request(BaseMsg &msg) {
 
 	if(!mpCnn) {
 		if(!mpCnnMan) {
-			mpCnn.reset(new BaseCnn);
+			mpCnn.reset(new SimpleCnn);
 			ret = mpCnn->connect(s_ip, s_port, 30000, nullptr);
 		} else {
 			auto cnn = mpCnnMan->connect(s_ip, s_port);
@@ -86,13 +86,13 @@ int HttpReq::request(BaseMsg &msg) {
 		}
 	}
 
-	mpCnn->setOnListener([this](BaseCnn::CH_E evt) ->int {
+	mpCnn->setOnListener([this](SimpleCnn::CH_E evt) ->int {
 		alv("rx ch event=%d", (int)evt);
-		if(evt == BaseCnn::CH_E::CH_MSG) {
+		if(evt == SimpleCnn::CH_E::CH_MSG) {
 			return procOnMsg();
-		} else if(evt == BaseCnn::CH_E::CH_DATA) {
+		} else if(evt == SimpleCnn::CH_E::CH_DATA) {
 			return procOnData();
-		} else if(evt == BaseCnn::CH_E::CH_CLOSED) {
+		} else if(evt == SimpleCnn::CH_E::CH_CLOSED) {
 			if(!mStatus.fin) {
 				alw("*** request early terminated");
 				mRespTimer.kill();
@@ -103,7 +103,7 @@ int HttpReq::request(BaseMsg &msg) {
 			}
 			//					mMsgTx.close();
 			return 0;
-		} else if(evt == BaseCnn::CH_E::CH_WRITABLE) {
+		} else if(evt == SimpleCnn::CH_E::CH_WRITABLE) {
 			auto r = mMsgTx.procOnWritable();
 			if(r == MsgSender::kMsgDataNeeded) {
 				mLis(ON_SEND, 0);

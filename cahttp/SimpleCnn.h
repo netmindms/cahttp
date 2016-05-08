@@ -5,8 +5,8 @@
  *      Author: netmind
  */
 
-#ifndef CAHTTP_BASECNN_H_
-#define CAHTTP_BASECNN_H_
+#ifndef CAHTTP_SIMPLECNN_H_
+#define CAHTTP_SIMPLECNN_H_
 
 #include <string>
 #include <ednio/EdNio.h>
@@ -17,19 +17,21 @@
 
 namespace cahttp {
 
-class BaseCnn {
+class SimpleCnn {
 	friend class HttpReq;
 	friend class ReHttpSvrCtx;
 	friend class ReSvrCnn;
 private:
+	enum {
+		kClosed=0,
+		kConnecting,
+		kConnected,
+	};
 	union status_t {
 			unsigned char val;
 			struct {
-				uint8_t connected:1;
+				uint8_t cnn_status:2;
 				uint8_t server:1;
-			};
-			struct {
-				uint8_t cache:2;
 			};
 		};
 public:
@@ -44,8 +46,8 @@ public:
 		eIdleTimer=0,
 	};
 	typedef std::function<void (BaseMsg&, int)> MsgLis;
-	BaseCnn();
-	virtual ~BaseCnn();
+	SimpleCnn();
+	virtual ~SimpleCnn();
 	void setOnListener(std::function<void(CH_E)> lis) {
 		mLis = lis;
 	}
@@ -115,4 +117,4 @@ protected:
 
 } /* namespace cahttp */
 
-#endif /* CAHTTP_BASECNN_H_ */
+#endif /* CAHTTP_SIMPLECNN_H_ */

@@ -18,8 +18,8 @@
 #include "BaseMsg.h"
 #include "PacketBuf.h"
 #include "MsgTransmitter.h"
-#include "BaseCnn.h"
 #include "MsgSender.h"
+#include "SimpleCnn.h"
 
 namespace cahttp {
 
@@ -102,7 +102,7 @@ private:
 	BaseMsg mReqMsg;
 	std::unique_ptr<BaseMsg> mupRespMsg;
 	std::string mRecvDataBuf;
-	std::unique_ptr<BaseCnn> mpCnn;
+	std::shared_ptr<SimpleCnn> mpCnn;
 	uint32_t mSvrIp;
 	uint16_t mSvrPort;
 

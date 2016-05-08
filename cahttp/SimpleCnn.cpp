@@ -9,7 +9,7 @@
 
 #include <memory>
 #include "BaseMsg.h"
-#include "BaseCnn.h"
+#include "SimpleCnn.h"
 #include "ext/nmdutil/etcutil.h"
 #include "ext/nmdutil/netutil.h"
 #include "flog.h"
@@ -19,7 +19,7 @@ using namespace std;
 
 namespace cahttp {
 
-BaseCnn::BaseCnn() {
+SimpleCnn::SimpleCnn() {
 	mStatus.val = 0;
 	mBuf = nullptr;
 	mBufSize = 2048;
@@ -29,7 +29,7 @@ BaseCnn::BaseCnn() {
 	mSvrPort = 0;
 }
 
-BaseCnn::~BaseCnn() {
+SimpleCnn::~SimpleCnn() {
 	alv("dest basecnn, ptr=%x", (long)this);
 	close();
 	if(mBuf) {
@@ -38,7 +38,7 @@ BaseCnn::~BaseCnn() {
 }
 
 
-int BaseCnn::connect(uint32_t ip, int port, int timeout,std::function<void(CH_E)> lis) {
+int SimpleCnn::connect(uint32_t ip, int port, int timeout,std::function<void(CH_E)> lis) {
 	mLis = lis;
 	mSvrIp = ip;
 	mSvrPort = port;
@@ -53,7 +53,7 @@ int BaseCnn::connect(uint32_t ip, int port, int timeout,std::function<void(CH_E)
 		alw("*** connecting timeout... ip=%s, port=%d", cahttpu::Ip2CStr(ip), port);
 		mCnnTimer.kill();
 		mSocket.close();
-		mStatus.connected = 0;
+		mStatus.cnn_status = 0;
 		procClosed();
 	});
 	mCnnTimer.set(timeout);
@@ -61,8 +61,8 @@ int BaseCnn::connect(uint32_t ip, int port, int timeout,std::function<void(CH_E)
 
 }
 
-SR BaseCnn::send(const char* buf, size_t len) {
-	if(mStatus.connected==0) {
+SR SimpleCnn::send(const char* buf, size_t len) {
+	if(mStatus.cnn_status==0) {
 		ald("*** not yet connected");
 		return SR::eNext;
 	}
@@ -81,7 +81,7 @@ SR BaseCnn::send(const char* buf, size_t len) {
 	}
 }
 
-void BaseCnn::close() {
+void SimpleCnn::close() {
 	if(mSocket.getFd()>=0) {
 		ald("close socket, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
 		mSocket.close();
@@ -93,12 +93,12 @@ void BaseCnn::close() {
 	mSvrPort = 0;
 }
 
-void BaseCnn::reserveWrite() {
+void SimpleCnn::reserveWrite() {
 	mSocket.reserveWrite();
 }
 
 
-int BaseCnn::procRead() {
+int SimpleCnn::procRead() {
 	assert(mSocket.getFd()>0);
 	alv("proc read, fd=%d, cnnptr=%x", mSocket.getFd(), (long)this);
 	auto rcnt = mSocket.recvPacket(mBuf, mBufSize);
@@ -136,14 +136,14 @@ int BaseCnn::procRead() {
 
 
 
-int BaseCnn::openServer(int fd) {
+int SimpleCnn::openServer(int fd) {
 	mStatus.server=1;
 	init_sock(true, fd);
 	return 0;
 }
 
 
-void BaseCnn::init_sock(bool svr, int fd) {
+void SimpleCnn::init_sock(bool svr, int fd) {
 	if(!mBuf) {
 		mBuf = new char[mBufSize];
 		assert(mBuf);
@@ -151,20 +151,20 @@ void BaseCnn::init_sock(bool svr, int fd) {
 	mMsgFrame.init(svr);
 	if(svr) {
 		mSocket.openChild(fd);
-		mStatus.connected=1;
+		mStatus.cnn_status=1;
 	}
 
 	mSocket.setOnListener([this](int event) {
 			if(event == NETEV_CONNECTED) {
 				ald("sock connected");
 				mCnnTimer.kill();
-				mStatus.connected=1;
+				mStatus.cnn_status=1;
 				procWritable();
 			} else if(event == NETEV_DISCONNECTED) {
 				ald("*** sock disconnected...");
 				mCnnTimer.kill();
 				mSocket.close();
-				mStatus.connected=0;
+				mStatus.cnn_status=0;
 				procClosed();
 				OnDisconnected();
 			} else if(event == NETEV_READABLE) {
@@ -191,17 +191,17 @@ void BaseCnn::init_sock(bool svr, int fd) {
 
 
 
-int BaseCnn::procWritable() {
+int SimpleCnn::procWritable() {
 	mLis(CH_WRITABLE);
 	return 0;
 }
 
-int BaseCnn::procClosed() {
+int SimpleCnn::procClosed() {
 	mLis(CH_CLOSED);
 	return 0;
 }
 
-void BaseCnn::OnDisconnected() {
+void SimpleCnn::OnDisconnected() {
 //	mCnnTimer.kill();
 //	mSocket.close();
 //	mSvrIp = 0;
@@ -210,25 +210,25 @@ void BaseCnn::OnDisconnected() {
 //	procClosed();
 }
 
-void BaseCnn::OnIdle() {
+void SimpleCnn::OnIdle() {
 }
 
-void BaseCnn::sendEnd() {
+void SimpleCnn::sendEnd() {
 }
 
-void BaseCnn::recvEnd() {
+void SimpleCnn::recvEnd() {
 }
 
-void BaseCnn::startIdleTimer() {
+void SimpleCnn::startIdleTimer() {
 	mCnnTimer.set(5000, 0, [this](){
 		ald("idle timer expired...");
 		close();
-		mStatus.connected=0;
+		mStatus.cnn_status=0;
 		OnDisconnected();
 	});
 }
 
-void BaseCnn::forceCloseChannel(uint32_t rx, uint32_t tx) {
+void SimpleCnn::forceCloseChannel(uint32_t rx, uint32_t tx) {
 	ald("force close channel, rx=%d, tx=%d", rx, tx);
 
 	mSocket.close();

@@ -83,7 +83,8 @@ int main(int argc, char* argv[]) {
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc";
 //	::testing::GTEST_FLAG(filter) = "req2.transfer_enc_file";
 //	::testing::GTEST_FLAG(filter) = "req2.send_data";
-	::testing::GTEST_FLAG(filter) = "Req2Test.cnnman_pipe";
+//	::testing::GTEST_FLAG(filter) = "Req2Test.cnnman_pipe";
+	::testing::GTEST_FLAG(filter) = "Req2Test.cnnman_idletimeout";
 //	::testing::GTEST_FLAG(filter) = "Req2Test.reqman_idle_timer";
 //	::testing::GTEST_FLAG(filter) = "Req2Test.*";
 //	::testing::GTEST_FLAG(filter) = "etc.*";

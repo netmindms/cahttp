@@ -23,9 +23,9 @@ public:
 	};
 	HttpCnnMan();
 	virtual ~HttpCnnMan();
-	std::pair<std::unique_ptr<SharedCnn>, int> connect(uint32_t ip, uint16_t port);
+	std::pair<std::shared_ptr<SimpleCnn>, int> connect(uint32_t ip, uint16_t port);
 	size_t getPoolSize() {
-		return mCnnPool.size();
+		return mPipeCnnPool.size();
 	}
 	void pipelining(bool pipe) {
 		mCfg.pipelining = pipe;
@@ -37,8 +37,12 @@ public:
 
 private:
 	cfg_t mCfg;
-	std::list<std::shared_ptr<BaseConnection>> mCnnPool;
+	std::list<std::shared_ptr<BaseConnection>> mPipeCnnPool;
+	std::list<std::shared_ptr<SimpleCnn>> mBaseCnnPool;
 	uint32_t mHandleSeed;
+	std::pair<std::shared_ptr<SharedCnn>, int> connect_pipeline(uint32_t ip, uint16_t port);
+	std::pair<std::shared_ptr<SimpleCnn>, int> connect_base(uint32_t ip, uint16_t port);
+
 };
 
 } /* namespace cahttp */

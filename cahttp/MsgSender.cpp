@@ -36,7 +36,7 @@ MsgSender::MsgSender() {
 MsgSender::~MsgSender() {
 }
 
-int MsgSender::open(BaseCnn& cnn) {
+int MsgSender::open(SimpleCnn& cnn) {
 	mpCnn = &cnn;
 	ald("open msg sender");
 	return 0;

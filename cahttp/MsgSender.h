@@ -10,10 +10,10 @@
 
 #include <ednio/EdEventFd.h>
 #include "CaHttpCommon.h"
-#include "BaseCnn.h"
 #include "CaHttpCommon.h"
 #include "BaseMsg.h"
 #include "PacketBuf.h"
+#include "SimpleCnn.h"
 
 namespace cahttp {
 
@@ -27,7 +27,7 @@ public:
 	};
 	MsgSender();
 	virtual ~MsgSender();
-	int open(BaseCnn& cnn);
+	int open(SimpleCnn& cnn);
 	int sendMsg(BaseMsg& msg);
 //	SR sendData(const char* ptr, size_t len);
 	SR sendData(const char* ptr, size_t len, bool buffering);
@@ -54,7 +54,7 @@ private:
 			uint8_t final: 1;
 		};
 	};
-	BaseCnn* mpCnn;
+	SimpleCnn* mpCnn;
 	status_t mStatus;
 	std::list<std::unique_ptr<PacketBuf>> mBufList;
 	int64_t mSendDataCnt;

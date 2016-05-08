@@ -58,11 +58,11 @@ void SharedCnn::openSharedCnn(shared_ptr<BaseConnection> spcnn) {
 		if(evt == BaseConnection::CH_MSG) {
 			auto pmsg = mpPipeCnn->fetchMsg();
 			mRecvMsg.reset(pmsg);
-			mLis(BaseCnn::CH_MSG);
+			mLis(SimpleCnn::CH_MSG);
 		} else if(evt == BaseConnection::CH_DATA) {
 			mRecvData.clear();
 			mRecvData = mpPipeCnn->fetchData();
-			mLis(BaseCnn::CH_DATA);
+			mLis(SimpleCnn::CH_DATA);
 		} else if(evt == BaseConnection::CH_CLOSED) {
 			mRxCh = 0;
 			procClosed();

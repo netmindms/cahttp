@@ -8,12 +8,13 @@
 #ifndef CAHTTP_SHAREDCNN_H_
 #define CAHTTP_SHAREDCNN_H_
 #include <memory>
-#include "BaseCnn.h"
+
+#include "SimpleCnn.h"
 
 namespace cahttp {
 class HttpCnnMan;
 class BaseConnection;
-class SharedCnn : public BaseCnn {
+class SharedCnn : public SimpleCnn {
 public:
 	SharedCnn();
 	virtual ~SharedCnn();
