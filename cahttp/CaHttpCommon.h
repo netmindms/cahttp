@@ -115,6 +115,14 @@ enum SR {
 	eNext=2,
 };
 
+enum CHEVENT {
+	kOnClosed,
+	kOnConnected,
+	kOnWritable,
+	kOnMsg,
+	kOnData,
+};
+
 #define __HTTP_ERR_MAP(__ERRDEF) \
 	__ERRDEF(0, NoErr) \
 	__ERRDEF(1, EarlyDisconnected) \

@@ -340,7 +340,7 @@ void BaseConnection::startIdleTimer() {
 		ald("idle timer expired...");
 		close();
 		FSET_DISCNN();
-		OnDisconnected();
+		if(mDefRxLis) mDefRxLis(CH_CLOSED);
 	});
 }
 

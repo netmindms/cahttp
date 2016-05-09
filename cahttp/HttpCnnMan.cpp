@@ -24,7 +24,7 @@ HttpCnnMan::~HttpCnnMan() {
 	// TODO Auto-generated destructor stub
 }
 
-pair<shared_ptr<SimpleCnn>, int> HttpCnnMan::connect(uint32_t ip, uint16_t port) {
+pair<shared_ptr<SharedCnn>, int> HttpCnnMan::connect(uint32_t ip, uint16_t port) {
 #if 1
 	return connect_pipeline(ip, port);
 #else
@@ -69,8 +69,8 @@ pair<shared_ptr<SharedCnn>, int> HttpCnnMan::connect_pipeline(uint32_t ip, uint1
 					if((*itr)->getHandle()==handle) {
 						ald("cnn ref_count=%ld", (*itr).use_count());
 						(*itr)->close();
-						ald("delete connection, handle=%ld, pool_size=%d", handle, mPipeCnnPool.size());
 						mPipeCnnPool.erase(itr);
+						ald("delete connection, handle=%ld, pool_size=%d", handle, mPipeCnnPool.size());
 						break;
 					}
 				}
@@ -87,6 +87,7 @@ pair<shared_ptr<SharedCnn>, int> HttpCnnMan::connect_pipeline(uint32_t ip, uint1
 	return {move(upcnn), cret};
 }
 
+#if 0
 std::pair<std::shared_ptr<SimpleCnn>, int> HttpCnnMan::connect_base(uint32_t ip, uint16_t port) {
 	shared_ptr<SimpleCnn> res;
 	for(auto itr=mBaseCnnPool.begin(); itr != mBaseCnnPool.end(); itr++) {
@@ -103,7 +104,7 @@ std::pair<std::shared_ptr<SimpleCnn>, int> HttpCnnMan::connect_base(uint32_t ip,
 	auto ret = res->connect(ip, port, 30000, nullptr);
 	return {move(res), ret} ;
 }
-
+#endif
 
 void HttpCnnMan::close() {
 	for(auto &c: mPipeCnnPool) {

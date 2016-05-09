@@ -23,7 +23,7 @@ public:
 	};
 	HttpCnnMan();
 	virtual ~HttpCnnMan();
-	std::pair<std::shared_ptr<SimpleCnn>, int> connect(uint32_t ip, uint16_t port);
+	std::pair<std::shared_ptr<SharedCnn>, int> connect(uint32_t ip, uint16_t port);
 	size_t getPoolSize() {
 		return mPipeCnnPool.size();
 	}
@@ -38,10 +38,10 @@ public:
 private:
 	cfg_t mCfg;
 	std::list<std::shared_ptr<BaseConnection>> mPipeCnnPool;
-	std::list<std::shared_ptr<SimpleCnn>> mBaseCnnPool;
+//	std::list<std::shared_ptr<SimpleCnn>> mBaseCnnPool;
 	uint32_t mHandleSeed;
 	std::pair<std::shared_ptr<SharedCnn>, int> connect_pipeline(uint32_t ip, uint16_t port);
-	std::pair<std::shared_ptr<SimpleCnn>, int> connect_base(uint32_t ip, uint16_t port);
+//	std::pair<std::shared_ptr<SimpleCnn>, int> connect_base(uint32_t ip, uint16_t port);
 
 };
 

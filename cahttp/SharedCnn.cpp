@@ -6,6 +6,7 @@
  */
 
 #include "SharedCnn.h"
+
 #include "BaseConnection.h"
 #include "HttpCnnMan.h"
 
@@ -40,9 +41,11 @@ void SharedCnn::recvEnd() {
 void SharedCnn::setHttpCnnMan(HttpCnnMan& cnnman) {
 }
 
+#if 0
 int SharedCnn::connect(uint32_t ip, int port, int timeout, std::function<void(CH_E)> lis) {
 	return 0;
 }
+#endif
 
 void SharedCnn::close() {
 	if(mRxCh || mTxCh) {
@@ -58,26 +61,30 @@ void SharedCnn::openSharedCnn(shared_ptr<BaseConnection> spcnn) {
 		if(evt == BaseConnection::CH_MSG) {
 			auto pmsg = mpPipeCnn->fetchMsg();
 			mRecvMsg.reset(pmsg);
-			mLis(SimpleCnn::CH_MSG);
+			mLis(CHEVENT::kOnMsg);
 		} else if(evt == BaseConnection::CH_DATA) {
 			mRecvData.clear();
 			mRecvData = mpPipeCnn->fetchData();
-			mLis(SimpleCnn::CH_DATA);
+			mLis(CHEVENT::kOnData);
 		} else if(evt == BaseConnection::CH_CLOSED) {
 			mRxCh = 0;
-			procClosed();
+			mLis(CHEVENT::kOnClosed);
 		}
 		return 0;
 	});
 	mTxCh = spcnn->openTxCh([this](BaseConnection::CH_E evt) {
 		if(evt == BaseConnection::CH_WRITABLE) {
-			procWritable();
+			mLis(CHEVENT::kOnWritable);
 		} else if(evt == BaseConnection::CH_CLOSED) {
 			mTxCh = 0;
-			procClosed();
+			mLis(CHEVENT::kOnClosed);
 		}
 		return 0;
 	});
+}
+
+void SharedCnn::reserveWrite() {
+	mpPipeCnn->reserveWrite();
 }
 
 } /* namespace cahttp */

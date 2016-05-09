@@ -68,31 +68,19 @@ int HttpReq::request(BaseMsg &msg) {
 	}
 
 	int ret;
-	if(mpCnn) {
-		auto addr = mpCnn->getRmtAddr();
-		if(addr.first != s_ip || addr.second != s_port) {
-			mpCnn.reset();
-		}
-	}
+	mpCnn.reset();
 
-	if(!mpCnn) {
-		if(!mpCnnMan) {
-			mpCnn.reset(new SimpleCnn);
-			ret = mpCnn->connect(s_ip, s_port, 30000, nullptr);
-		} else {
-			auto cnn = mpCnnMan->connect(s_ip, s_port);
-			mpCnn = move(cnn.first);
-			ret = cnn.second;
-		}
-	}
+	auto cnn = mpCnnMan->connect(s_ip, s_port);
+	mpCnn = move(cnn.first);
+	ret = cnn.second;
 
-	mpCnn->setOnListener([this](SimpleCnn::CH_E evt) ->int {
+	mpCnn->setOnListener([this](CHEVENT evt) ->int {
 		alv("rx ch event=%d", (int)evt);
-		if(evt == SimpleCnn::CH_E::CH_MSG) {
+		if(evt == CHEVENT::kOnMsg) {
 			return procOnMsg();
-		} else if(evt == SimpleCnn::CH_E::CH_DATA) {
+		} else if(evt == CHEVENT::kOnData) {
 			return procOnData();
-		} else if(evt == SimpleCnn::CH_E::CH_CLOSED) {
+		} else if(evt == CHEVENT::kOnClosed) {
 			if(!mStatus.fin) {
 				alw("*** request early terminated");
 				mRespTimer.kill();
@@ -103,7 +91,7 @@ int HttpReq::request(BaseMsg &msg) {
 			}
 			//					mMsgTx.close();
 			return 0;
-		} else if(evt == SimpleCnn::CH_E::CH_WRITABLE) {
+		} else if(evt == CHEVENT::kOnWritable) {
 			auto r = mMsgTx.procOnWritable();
 			if(r == MsgSender::kMsgDataNeeded) {
 				mLis(ON_SEND, 0);

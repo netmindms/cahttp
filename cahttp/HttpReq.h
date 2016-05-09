@@ -19,6 +19,7 @@
 #include "PacketBuf.h"
 #include "MsgTransmitter.h"
 #include "MsgSender.h"
+#include "SharedCnn.h"
 #include "SimpleCnn.h"
 
 namespace cahttp {
@@ -102,7 +103,7 @@ private:
 	BaseMsg mReqMsg;
 	std::unique_ptr<BaseMsg> mupRespMsg;
 	std::string mRecvDataBuf;
-	std::shared_ptr<SimpleCnn> mpCnn;
+	std::shared_ptr<SharedCnn> mpCnn;
 	uint32_t mSvrIp;
 	uint16_t mSvrPort;
 
